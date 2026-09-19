@@ -1,0 +1,18 @@
+Küp fotoğraflarınızı bu klasöre koyun (JPG, PNG veya WebP).
+
+Uygulamada “Klasörü yenile” düğmesine basın. Fotoğraflar yalnızca bu bilgisayarda işlenir.
+
+Altı yüzü çekin. Çekimler arasında katman çevirmeyin, sadece bütün küpü çevirin.
+İlk fotoğrafta ön ve üst yüzü belirleyin ve aynı referansları koruyun.
+
+Önerilen dosya adları: U.jpg, R.jpg, F.jpg, D.jpg, L.jpg, B.jpg.
+U üst; R sağ; F ön; D alt; L sol; B arka.
+Fotoğrafa karşıdan bakarken üst kenarda bulunması gereken komşu yüz:
+U için B; R için U; F için U; D için F; L için U; B için U.
+
+Uygulama merkez renkleriyle renkleri eşler. Ancak fotoğraf yönü sadece merkezden anlaşılmaz.
+“Fotoğrafları otomatik tanı” düğmesi dokuz kareyi ve yüzleri kendisi bulur.
+Altı yüzün fotoğraf yönleri küpün parça eşleşmelerinden otomatik belirlenir.
+Gerekirse önizlemeyi 90 derece döndürün veya hücreleri sabit renk paletiyle düzeltin.
+Altı yüzü doğruladıktan sonra “Küpü oluştur” düğmesine basın.
+Otomatik algılama başarısızsa “Elle köşe seç” ile sol üst, sağ üst, sağ alt, sol alt sırasıyla seçim yapabilirsiniz.

@@ -1,0 +1,4 @@
+kup-fotograflari/*
+!kup-fotograflari/BURAYA-FOTOGRAF-EKLE.txt
+tests/fixtures/
+node_modules/

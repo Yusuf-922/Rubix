@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {solved,apply,inverse,facelets,validate,FACES,fromFaces} from '../public/cube.js';
+const signature=s=>JSON.stringify(facelets(s));
+test('18 dönüş, tersleri ve dört çeyrek dönüş',()=>{for(const f of FACES){let s=solved();for(let i=0;i<4;i++)s=apply(s,f);assert.equal(signature(s),signature(solved()));for(const suffix of ['',"'",'2'])assert.equal(signature(apply(apply(solved(),f+suffix),inverse(f+suffix))),signature(solved()));}});
+test('U üstteki ön sırayı sola taşır; R ön sağ sütunu üste taşır',()=>{const u=facelets(apply(solved(),'U'));assert.deepEqual(u.L.slice(0,3),['F','F','F']);const r=facelets(apply(solved(),'R'));assert.deepEqual([r.U[2],r.U[5],r.U[8]],['F','F','F']);});
+test('uzun geçerli diziler ve tersleri, durum doğrulayıcı',()=>{let s=solved();const moves=[];let seed=17;for(let i=0;i<500;i++){seed=(seed*1664525+1013904223)>>>0;const m=FACES[seed%6]+['',"'",'2'][(seed>>>8)%3];moves.push(m);s=apply(s,m);assert.equal(validate(facelets(s)).ok,true);}assert.equal(signature(fromFaces(facelets(s))),signature(s));for(const m of moves.reverse())s=apply(s,inverse(m));assert.equal(signature(s),signature(solved()));});
+test('tek ters kenar, bükük köşe ve tek parça takası reddedilir',()=>{let f=facelets(solved());[f.U[7],f.F[1]]=[f.F[1],f.U[7]];assert.equal(validate(f).ok,false);f=facelets(solved());[f.U[8],f.R[0],f.F[2]]=[f.R[0],f.F[2],f.U[8]];assert.equal(validate(f).ok,false);f=facelets(solved());[f.R[1],f.F[1]]=[f.F[1],f.R[1]];assert.equal(validate(f).ok,false);});

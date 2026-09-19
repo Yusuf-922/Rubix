@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {homography,sampleFace,distance} from '../public/photo.js';
+test('perspektif eşleme dört köşeyi korur',()=>{const q=[[15,20],[330,10],[290,320],[5,270]],map=homography(q);[[0,0],[1,0],[1,1],[0,1]].forEach((uv,i)=>map(...uv).forEach((v,j)=>assert.ok(Math.abs(v-q[i][j])<1e-7)));});
+test('dokuz hücrenin merkezleri doğru sırada okunur',()=>{const width=300,height=300,data=new Uint8ClampedArray(width*height*4),colors=Array.from({length:9},(_,i)=>[i*20,250-i*20,30+i]);for(let y=0;y<height;y++)for(let x=0;x<width;x++){const rgb=colors[Math.floor(y/100)*3+Math.floor(x/100)];for(let c=0;c<3;c++)data[(y*width+x)*4+c]=rgb[c];data[(y*width+x)*4+3]=255;}const canvas={getContext:()=>({getImageData:()=>({width,height,data})}),width,height};assert.deepEqual(sampleFace(canvas,[[0,0],[299,0],[299,299],[0,299]]),colors);assert.throws(()=>sampleFace(canvas,[[0,0],[299,299],[299,0],[0,299]]));});
+test('aynı renk sıfır uzaklıktadır ve yakın tonlar daha yakın eşleşir',()=>{assert.equal(distance([255,0,0],[255,0,0]),0);assert.ok(distance([230,30,30],[255,0,0])<distance([230,30,30],[0,0,255]));});
