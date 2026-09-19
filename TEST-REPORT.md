@@ -50,4 +50,12 @@ Gönderilen altı fotoğraftaki 54 renk hücresi otomatik bulundu ve görsel ref
 
 ## Genel sınırlar
 
+## Kamera ekseni düzeltmesi
+
+Önceki sınırsız Euler açıları, küp tersken yatay kontrolün yönünü değiştiriyor ve kutup görünümünde yatay hareketi ekran üzerinde dönmeye dönüştürüyordu. Fare ve yön tuşları artık ekran eksenlerinde biriken, normalize edilmiş quaternion yönelimi kullanıyor. Yukarı ok ekrandaki ön yüzü yukarı taşır.
+
+27 otomatik test başarılı. Yeni testler ters/kutup yönelimlerinde ekran eksenlerini, çoklu tam turları, 10.000 hareket sonrası uzunluk korunumunu, ters sürükleme ve görünüm sıfırlamayı kapsıyor. Tarayıcıda sarı yukarıdayken sağa sürükleme ve sarı kameraya bakarken sağ ok kontrol edildi; konsol hatası yok.
+
+## Kapsam
+
 Bu sonuç gönderilen altı fotoğraf ve mevcut masaüstü tarayıcı için doğrulandı. Örtülü yüz, yoğun parlama, çok eğik çekim veya farklı renk düzenleri için aynı doğruluk garantisi verilmez. Belirsiz algılamada elle düzeltme kullanılabilir. Sayfa yenilendiğinde mevcut oturum sıfırlanır; klasördeki fotoğraflar korunur.

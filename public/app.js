@@ -4,9 +4,11 @@ import {parseSequence,Playback,DEFAULT_KEYS,validateKeys} from './playback.js';
 import {detectFace,classifyColor,COLOR_NAMES,rotateGrid,alignFaces,hsv} from './vision.js';
 import {projectedHistory,historyRequest} from './history.js';
 import {solveCube,solverInput} from './solver.js';
+import {Orbit} from './orbit.js';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const hexrgb=h=>h.match(/\w\w/g).map(x=>parseInt(x,16));
-let state=solved(),initial=clone(state),history=[],cursor=0,queue=[],animation=null,mode='',yaw=-.65,pitch=.48,zoom=1,displayColors={...COLORS};
+let state=solved(),initial=clone(state),history=[],cursor=0,queue=[],animation=null,mode='',zoom=1,displayColors={...COLORS};
+const orbit=new Orbit();
 let selected='U',paint='U',photos=[],faceData={},toastTimer;
 let playback=null,liveSnapshot=null,draftDirty=false,keys={...DEFAULT_KEYS};
 let solutionBase=null,solverJob=null;
@@ -55,7 +57,7 @@ $('#undo').onclick=undo;
 $('#redo').onclick=redo;
 function resetState(s){if(playback)stopPlayback();clearSolution();solverJob?.cancel();state=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();$('#move-description').textContent='Yüz harfine basarak veya aşağıdaki düğmelerle döndür.';}
 $('#reset-cube').onclick=()=>{resetState(initial);toast('Küp başlangıç durumuna döndü.');};
-$('#reset-view').onclick=()=>{yaw=-.65;pitch=.48;zoom=1;};
+$('#reset-view').onclick=()=>{orbit.reset();zoom=1;};
 $('#zoom-in').onclick=()=>zoom=Math.min(1.45,zoom+.1);$('#zoom-out').onclick=()=>zoom=Math.max(.6,zoom-.1);
 $('#speed').oninput=()=>$('#speed-value').textContent=(520/(1000-Number($('#speed').value))).toFixed(1)+'×';
 function updatePlaybackControls(){
@@ -121,12 +123,12 @@ document.addEventListener('keydown',e=>{
  if((textInput||e.target.tagName==='SELECT')&&!(playback&&e.target===$('#sequence')&&e.code==='Space'))return;
  if(e.ctrlKey||e.metaKey)return;
  if(e.code==='Space'&&playback){e.preventDefault();if(!e.repeat)advance();return;}
- const arrows={ArrowLeft:[-.12,0],ArrowRight:[.12,0],ArrowUp:[0,.1],ArrowDown:[0,-.1]};
- if(arrows[e.key]){e.preventDefault();const [dy,dp]=arrows[e.key];yaw+=dy;pitch+=dp;return;}
+ const arrows={ArrowLeft:[-.12,0],ArrowRight:[.12,0],ArrowUp:[0,-.1],ArrowDown:[0,.1]};
+ if(arrows[e.key]){e.preventDefault();orbit.turn(...arrows[e.key]);return;}
  if(e.repeat)return;const f=FACES.find(f=>keys[f]===e.key.toLowerCase());if(f){e.preventDefault();enqueue(f+(e.shiftKey?"'":mode));}
 },true);
-let drag=null;canvas.onpointerdown=e=>{drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);canvas.focus({preventScroll:true});};canvas.onpointermove=e=>{if(!drag)return;yaw+=(e.clientX-drag.x)*.008;pitch+=(e.clientY-drag.y)*.008;drag={x:e.clientX,y:e.clientY};};canvas.onpointerup=canvas.onpointercancel=()=>drag=null;canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.6,Math.min(1.45,zoom-e.deltaY*.001));},{passive:false});
-const view=v=>rotate(rotate(v,[0,1,0],yaw),[1,0,0],pitch);
+let drag=null;canvas.onpointerdown=e=>{drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);canvas.focus({preventScroll:true});};canvas.onpointermove=e=>{if(!drag)return;orbit.turn((e.clientX-drag.x)*.008,(e.clientY-drag.y)*.008);drag={x:e.clientX,y:e.clientY};};canvas.onpointerup=canvas.onpointercancel=canvas.onlostpointercapture=()=>drag=null;canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.6,Math.min(1.45,zoom-e.deltaY*.001));},{passive:false});
+const view=v=>orbit.view(v);
 function basis(n){const a=Math.abs(n[1])>.5?[1,0,0]:[0,1,0];return [a,cross(n,a)];}
 function draw(now){
  const rect=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2),w=rect.width,h=rect.height;
