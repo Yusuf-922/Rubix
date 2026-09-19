@@ -117,7 +117,7 @@ function saveKeys(next){if(!validateKeys(next)){$('#shortcut-status').textConten
 $('#save-shortcuts').onclick=()=>saveKeys(Object.fromEntries($$('#shortcut-fields input').map(i=>[i.dataset.face,i.value.toLowerCase()])));
 $('#reset-shortcuts').onclick=()=>saveKeys({...DEFAULT_KEYS});renderKeys();updateHistory();
 document.addEventListener('keydown',e=>{
- if($('#help').open||e.altKey)return;
+ if($('#help').open||$('#camera-dialog').open||e.altKey)return;
  const textInput=e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'&&!['range','button','checkbox','file'].includes(e.target.type)||e.target.isContentEditable;
  const editing=textInput&&!e.target.readOnly&&(e.target!==$('#sequence')||draftDirty);
  const z=e.code==='KeyZ'||e.key.toLowerCase()==='z',y=e.code==='KeyY'||e.key.toLowerCase()==='y';
@@ -156,6 +156,19 @@ function refreshSelect(){const sel=$('#photo-select');sel.replaceChildren(new Op
 async function refresh(){try{const response=await fetch('./api/photos');if(!response.ok)throw Error();const list=await response.json(),local=photos.filter(p=>p.local);photos=[...list.filter(p=>!local.some(l=>l.name===p.name)),...local];$('#folder-info').textContent=list.length?`${list.length} fotoğraf klasörden okundu.`:'kup-fotograflari klasörü boş. Fotoğrafları ekleyip yenile.';refreshSelect();}catch{$('#refresh').hidden=true;$('#folder-info').textContent='Web sürümünde “Fotoğraf seç” ile altı yüzü ekleyebilirsin.';}}
 $('#refresh').onclick=()=>refresh();
 $('#files').onchange=e=>{const files=[...e.target.files];for(const file of files){if(!/image\/(jpeg|png|webp)/.test(file.type)){toast('JPG, PNG veya WebP fotoğraf kullan.');continue;}photos=photos.filter(p=>p.name!==file.name);photos.push({name:file.name,url:URL.createObjectURL(file),local:true});}refreshSelect();$('#folder-info').textContent=`${photos.length} fotoğraf seçilebilir.`;e.target.value='';};
+let cameraStream=null,cameraSession=0;
+function stopCamera(){cameraSession++;if(cameraStream){cameraStream.getTracks().forEach(track=>track.stop());cameraStream=null;}$('#camera-video').srcObject=null;$('#camera-capture').disabled=true;}
+function closeCamera(){stopCamera();if($('#camera-dialog').open)$('#camera-dialog').close();}
+$('#camera-open').onclick=async()=>{
+ if($('#camera-dialog').open)return;
+ stopCamera();const session=cameraSession,status=$('#camera-status');status.textContent='Kamera açılıyor… Tarayıcı kamera izni isterse izin ver.';$('#camera-dialog').showModal();
+ if(!navigator.mediaDevices?.getUserMedia){status.textContent='Bu tarayıcı kamera erişimini desteklemiyor. HTTPS adresinde veya Fotoğraf seç ile devam edebilirsin.';return;}
+ try{const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});if(session!==cameraSession||!$('#camera-dialog').open){stream.getTracks().forEach(track=>track.stop());return;}cameraStream=stream;const video=$('#camera-video');video.srcObject=stream;await video.play();if(session!==cameraSession)return;$('#camera-capture').disabled=false;status.textContent='Hazır. Küp yüzünü kadraja al ve fotoğrafı çek.';}
+ catch(error){if(session!==cameraSession)return;stopCamera();status.textContent=error.name==='NotAllowedError'?'Kamera izni verilmedi. Tarayıcı ayarlarından izin verip yeniden dene.':error.name==='NotFoundError'?'Kamera bulunamadı. Kamerayı bağla veya Fotoğraf seç ile devam et.':'Kamera açılamadı. Başka bir uygulamanın kamerayı kullanmadığını kontrol et.';}
+};
+$('#camera-capture').onclick=()=>{const video=$('#camera-video');if(!cameraStream||!video.videoWidth){$('#camera-status').textContent='Kamera görüntüsü henüz hazır değil.';return;}const session=cameraSession;$('#camera-capture').disabled=true;const frame=document.createElement('canvas');frame.width=video.videoWidth;frame.height=video.videoHeight;frame.getContext('2d').drawImage(video,0,0);frame.toBlob(blob=>{if(session!==cameraSession||!$('#camera-dialog').open)return;if(!blob){$('#camera-capture').disabled=false;$('#camera-status').textContent='Fotoğraf oluşturulamadı. Yeniden dene.';return;}const name=`kamera-${new Date().toISOString().replace(/[:.]/g,'-')}.jpg`;photos.push({name,url:URL.createObjectURL(blob),local:true});refreshSelect();$('#folder-info').textContent=`${photos.length} fotoğraf seçilebilir.`;closeCamera();analysisStatus('Kamera fotoğrafı eklendi. Altı yüzü ekledikten sonra otomatik tanıma başlat.');toast('Kamera fotoğrafı eklendi.');},'image/jpeg',.92);};
+$('#camera-close').onclick=closeCamera;$('#camera-cancel').onclick=closeCamera;$('#camera-dialog').addEventListener('close',stopCamera);
+$('#camera-dialog').addEventListener('cancel',stopCamera);window.addEventListener('pagehide',closeCamera);
 const imageCache=new Map();
 async function loadImage(url){if(imageCache.has(url))return imageCache.get(url);const img=new Image();img.src=url;await img.decode();const c=document.createElement('canvas'),ratio=Math.min(1,640/Math.max(img.width,img.height));c.width=Math.round(img.width*ratio);c.height=Math.round(img.height*ratio);c.getContext('2d',{willReadFrequently:true}).drawImage(img,0,0,c.width,c.height);imageCache.set(url,c);return c;}
 async function readPhoto(url){const img=await loadImage(url);const detected=detectFace(img.getContext('2d').getImageData(0,0,img.width,img.height));return {url,img,...detected,manual:{},uncertain:[],auto:true,turns:0};}
