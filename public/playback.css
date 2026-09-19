@@ -2,3 +2,7 @@
 .stage{height:clamp(260px,38vh,410px);scroll-margin-top:15px}
 .palette{display:grid;grid-template-columns:repeat(3,28px);gap:8px;padding:3px}.palette button{width:28px;height:28px;min-width:28px;flex-shrink:0;border:1px solid #8392a9}.palette button.selected{outline:2px solid #a8e5c5;outline-offset:2px}.color-editor{min-width:0}.photo-wrap{height:225px}.small-actions{flex-wrap:wrap;gap:5px}.small-actions button{flex:1;padding:7px 5px}#analysis-status{overflow-wrap:anywhere;min-height:34px}#analyze-all{margin-top:10px}.face-tab{border-bottom:3px solid var(--face-color,#35475e)}
 .face-grid button:disabled{opacity:1}.face-grid button.center{border:2px solid #97abc2;box-shadow:none}
+
+/* Compact UI at browser zoom 100%; canvas coordinates remain in screen pixels. */
+body{zoom:.9}.solver-panel{padding:14px 0 0}.solver-panel .row{justify-content:flex-start} [hidden]{display:none!important}
+@media(max-width:720px){body{zoom:1}}

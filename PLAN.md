@@ -1,5 +1,9 @@
 # 3×3 Rubik Küpü — Proje Planı
 
+## 19 Eylül 2026 — Çözüm düğmesi
+
+Tamamlandı: yerel cubejs/Kociemba çözüm motoru, arka planda hesaplama ve iptal, mevcut küpten başlayan doğrulanmış çözüm akışı, otomatik/adım adım önizleme. Canlı geçmiş korunur. Masaüstü görünümü %90 ölçeğinde; kameranın dikey dönüş sınırı kaldırıldı. Kapsamlı, çok katmanlı öğretici mod sonraki aşama olarak ayrı tasarlanacak.
+
 İlk teslim: **Demo 1.0 — Küp modelleme ve görselleştirme**
 
 Durum: Demo 1.0 geliştirildi. Fare/klavye ile 3B inceleme, yüz hamleleri, animasyon, notasyon, geri alma/yineleme ve otomatik fotoğraf aktarımı mevcut. Gönderilen altı gerçek fotoğrafın 54 karesi doğru okundu ve tek geçerli yüz yönü bulundu.

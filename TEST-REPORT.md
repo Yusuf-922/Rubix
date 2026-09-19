@@ -37,6 +37,17 @@ Gönderilen altı fotoğraftaki 54 renk hücresi otomatik bulundu ve görsel ref
 
 19 otomatik test başarılı; tarayıcı kontrollerinde konsol hatası görülmedi. Otomatik testler motorun matematiğini, imkânsız durumları, gerçek fotoğrafları ve animasyon sırasında geçmiş komutlarını kapsıyor.
 
-## Sınırlar
+## 19 Eylül 2026 — Çözüm motoru ve görünüm
+
+- `npm test`: 24 başarılı, 0 hata, 0 atlanan test.
+- Cubejs ile modelimizin 18 yüz dönüşü aynı yüz dizilerini üretiyor. 12 adet 25 hamlelik karışım ve gönderilen altı fotoğrafın hizalanmış renk dizileri çözüldü; sonuçlar kendi modelimizde doğrulandı.
+- Hatalı motor çıktısı ve geçersiz durum reddediliyor. Worker başarı/hata/iptal temizliği otomatik testte kontrol edildi.
+- Masaüstü tarayıcıda: çözülmüş küp bildirimi, çözüm hesaplama, Boşluk ile tek adım, baştan otomatik oynatma ve canlı küpe dönüş kontrol edildi.
+- Klasördeki mevcut fotoğraflarla oluşturulan küp için 21 hamle üretildi; tamamlanan animasyonda çözülmüş küp görüldü.
+- Yeni hamle eski çözüm akışını kaldırıyor. Hızlı Ctrl+Z ve Ctrl+Shift+Z sonrasında canlı geçmiş korundu.
+- Dikey eksende 71 yukarı ok basışı ve toplam 800 piksel fare sürüklemesi ile bir tam tur aşıldı; sınırda takılma yok. Masaüstü %90 uygulama ölçeği görsel olarak kontrol edildi. Konsolda hata görülmedi.
+- Bu turda mobil görünüm ve gerçek 120 saniyelik zaman aşımı tarayıcıda beklenerek test edilmedi.
+
+## Genel sınırlar
 
 Bu sonuç gönderilen altı fotoğraf ve mevcut masaüstü tarayıcı için doğrulandı. Örtülü yüz, yoğun parlama, çok eğik çekim veya farklı renk düzenleri için aynı doğruluk garantisi verilmez. Belirsiz algılamada elle düzeltme kullanılabilir. Sayfa yenilendiğinde mevcut oturum sıfırlanır; klasördeki fotoğraflar korunur.

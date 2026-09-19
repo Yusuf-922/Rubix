@@ -41,4 +41,14 @@ Fotoğraflar başlangıç durumunu aktarır; fiziksel hamleler canlı izlenmez. 
 
 `npm test`: Küp motoru, 500 hamlelik dizi, imkânsız durumlar, perspektif, renk okuma, çok satırlı oynatma, kısayollar, animasyon sırasında geri alma/yineleme ve altı gerçek fotoğraf (19 test). Gerçek fotoğraf testi yerel `tests/fixtures/real` verisini kullanır; bu özel görüntüler Git'e eklenmez. Veriyi yeniden hazırlamak için Pillow bulunan Python ile `tests/prepare-real-photos.py` çalıştırılır. Veri yoksa ilgili test açıkça atlanır.
 
-Uygulama bağımlılıksız bir JavaScript küp motoru, perspektif projeksiyon kullanan Canvas 3B çizimi ve yerel Node.js sunucusundan oluşur. Çözümleyici, ders ve algoritma kütüphanesi sonraki aşamalardır.
+Uygulama JavaScript küp modeli, perspektif projeksiyon kullanan Canvas 3B çizimi ve yerel Node.js sunucusundan oluşur. Çözüm için MIT lisanslı cubejs yerel olarak paketlenmiştir; npm kurulumu veya çalışma anında internet gerekmez. Ders ve algoritma kütüphanesi sonraki aşamalardır.
+
+## Küpü çöz
+
+- **Küpü çöz**, o anki canlı küpü doğrular ve cubejs/Kociemba motorunda arka planda çözüm arar. Hesaplama iptal edilebilir; 120 saniye sınırı vardır.
+- Sonuç, kendi küp modelimiz üzerinde uygulanarak doğrulanır. Hamle sayısı ve notasyonları gösterilir; en kısa çözüm garantisi yoktur.
+- **Çözümü oynat** veya **Adım adım**, hesaplama anındaki küpten başlar. **Canlı küpe dön** önceki durumu korur. Çözüm önizlemesi canlı geçmişi değiştirmez.
+- Yeni bir canlı hamle, sıfırlama veya **Geçmişi getir** çözüm akışından çıkar. Hesaplama sırasında küp değişirse eski sonuç uygulanmaz.
+- Masaüstü arayüzü %90 ölçeğindedir; tarayıcı %100 yakınlaştırmada kullanılabilir. Küçük ekranlarda normal ölçek korunur.
+- Fare ve yön tuşları ile her iki eksende sınırsız dönüş yapılabilir.
+- Çözüm entegrasyonuyla otomatik test toplamı **24** oldu: tüm 18 dönüşün motorlar arası eşleşmesi, 12 karışım, fotoğraf renk dizileri, geçersiz durum, çözüm doğrulaması ve worker iptal/hata temizliği dahildir.

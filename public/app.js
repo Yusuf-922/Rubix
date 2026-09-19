@@ -3,11 +3,14 @@ import {sampleFace,homography,distance} from './photo.js';
 import {parseSequence,Playback,DEFAULT_KEYS,validateKeys} from './playback.js';
 import {detectFace,classifyColor,COLOR_NAMES,rotateGrid,alignFaces,hsv} from './vision.js';
 import {projectedHistory,historyRequest} from './history.js';
+import {solveCube,solverInput} from './solver.js';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const hexrgb=h=>h.match(/\w\w/g).map(x=>parseInt(x,16));
 let state=solved(),initial=clone(state),history=[],cursor=0,queue=[],animation=null,mode='',yaw=-.65,pitch=.48,zoom=1,displayColors={...COLORS};
 let selected='U',paint='U',photos=[],faceData={},toastTimer;
 let playback=null,liveSnapshot=null,draftDirty=false,keys={...DEFAULT_KEYS};
+let solutionBase=null,solverJob=null;
+function clearSolution(){if(solutionBase){solutionBase=null;draftDirty=false;}if(!solverJob)$('#solver-status').textContent='Mevcut küp için çözüm bul; tamamını veya adım adım izle.';}
 try{const stored=JSON.parse(localStorage.getItem('rubix-shortcuts'));if(stored&&validateKeys(stored))keys=Object.fromEntries(FACES.map(f=>[f,stored[f].toLowerCase()]));}catch{}
 const swatch=f=>COLORS[f];
 let analyzing=false,analysisMessage='';
@@ -18,7 +21,7 @@ function references(){for(const [id,f] of [['#ref-up','U'],['#ref-front','F']])$
 references();
 for(const f of FACES){const b=document.createElement('button');b.innerHTML=`<strong>${f}</strong><small>${LABELS[f]}</small><span class="shortcut-key"></span>`;b.dataset.face=f;b.setAttribute('aria-label',`${LABELS[f]} yüzünü döndür`);b.onclick=()=>enqueue(f+mode);$('#move-buttons').append(b);}
 $$('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;$$('[data-mode]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b);});});
-function enqueue(move,kind='move'){if(playback)stopPlayback();if(queue.length>40){toast('Önce sıradaki hamlelerin tamamlanmasını bekle.');return;}queue.push({move,kind});updateHistory();startNext();}
+function enqueue(move,kind='move'){if(playback)stopPlayback();if(queue.length>40){toast('Önce sıradaki hamlelerin tamamlanmasını bekle.');return;}clearSolution();queue.push({move,kind});updateHistory();startNext();}
 function startNext(){
  if(animation)return;
  const entry=playback?.take();
@@ -50,12 +53,15 @@ function undo(){
 function redo(){if(playback)stopPlayback();const job=historyRequest('redo',history,cursor,[animation,...queue]);if(job)enqueue(job.move,job.kind);}
 $('#undo').onclick=undo;
 $('#redo').onclick=redo;
-function resetState(s){if(playback)stopPlayback();state=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();$('#move-description').textContent='Yüz harfine basarak veya aşağıdaki düğmelerle döndür.';}
+function resetState(s){if(playback)stopPlayback();clearSolution();solverJob?.cancel();state=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();$('#move-description').textContent='Yüz harfine basarak veya aşağıdaki düğmelerle döndür.';}
 $('#reset-cube').onclick=()=>{resetState(initial);toast('Küp başlangıç durumuna döndü.');};
 $('#reset-view').onclick=()=>{yaw=-.65;pitch=.48;zoom=1;};
 $('#zoom-in').onclick=()=>zoom=Math.min(1.45,zoom+.1);$('#zoom-out').onclick=()=>zoom=Math.max(.6,zoom-.1);
 $('#speed').oninput=()=>$('#speed-value').textContent=(520/(1000-Number($('#speed').value))).toFixed(1)+'×';
 function updatePlaybackControls(){
+ $('#solve-cube').disabled=!!solverJob||!!playback||!!animation||queue.length>0;
+ $('#cancel-solve').hidden=!solverJob;
+ $('#replay').textContent=solutionBase?'▶ Çözümü oynat':'▶ Yeniden oynat';
  const busy=!playback&&(!!animation||queue.length>0),empty=!$('#sequence').value.trim();
  $('#replay').disabled=busy||empty;$('#step-mode').disabled=busy||empty;
  $('#sequence').readOnly=!!playback;$('#use-history').disabled=busy||!!playback;
@@ -64,14 +70,14 @@ function updatePlaybackControls(){
  $('#pause-playback').disabled=!playback||playback.phase!=='running';
  $('.workspace').classList.toggle('playback-active',!!playback);
  const statuses={running:'Oynatılıyor · Duraklat ile bekletebilirsin.',step:'Adım adım · Bir sonraki hamle için Boşluk tuşuna bas.',break:'Satır tamamlandı · Sonraki satır için Boşluk tuşuna bas.',paused:'Duraklatıldı · Devam etmek için Boşluk tuşuna bas.',done:'Akış tamamlandı · Yeniden oynatabilir veya canlı küpe dönebilirsin.'};
- $('#playback-status').textContent=playback?statuses[playback.phase]:draftDirty?'Düzenlenen akış · Oynatma, oturumun başlangıç küpünden başlar.':'Canlı kayıt · Yaptığın hamleler akışa eklenir.';
+ $('#playback-status').textContent=playback?statuses[playback.phase]:solutionBase?'Çözüm akışı · Oynatma, çözümün hesaplandığı küpten başlar.':draftDirty?'Düzenlenen akış · Oynatma, oturumun başlangıç küpünden başlar.':'Canlı kayıt · Yaptığın hamleler akışa eklenir.';
 }
 function startPlayback(playMode){
  if(!playback&&(animation||queue.length)){toast('Sıradaki hamleler tamamlandığında oynatabilirsin.');return;}
  let entries;try{entries=parseSequence($('#sequence').value);if(!entries.length)throw Error('Önce bir hamle yap veya akışa hamle yaz.');$('#sequence-error').hidden=true;}catch(err){$('#sequence-error').textContent=err.message;$('#sequence-error').hidden=false;return;}
  if(playback)stopPlayback();
  liveSnapshot={state:clone(state),source:$('#source-label').textContent};
- state=clone(initial);playback=new Playback(entries,playMode);$('#source-label').textContent='Akış önizlemesi';
+ state=clone(solutionBase||initial);playback=new Playback(entries,playMode);$('#source-label').textContent=solutionBase?'Çözüm önizlemesi':'Akış önizlemesi';
  // Move keyboard focus out of the editor so Space advances rather than types.
  canvas.focus({preventScroll:true});$('#stage').scrollIntoView({block:'start',behavior:'smooth'});updateHistory();startNext();
 }
@@ -79,7 +85,22 @@ function stopPlayback(){if(!playback)return;state=clone(liveSnapshot.state);$('#
 function advance(){if(!playback||animation)return;if(playback.advance()){startNext();updateHistory();}}
 $('#replay').onclick=()=>startPlayback('auto');$('#step-mode').onclick=()=>startPlayback('step');$('#advance').onclick=advance;
 $('#pause-playback').onclick=()=>{playback?.pause();updateHistory();};$('#stop-playback').onclick=stopPlayback;
-$('#use-history').onclick=()=>{draftDirty=false;$('#sequence-error').hidden=true;updateHistory();};
+$('#use-history').onclick=()=>{clearSolution();draftDirty=false;$('#sequence-error').hidden=true;updateHistory();};
+$('#solve-cube').onclick=async()=>{
+ if(solverJob||playback||animation||queue.length)return;
+ const snapshot=clone(state);
+ try{
+  const input=solverInput(snapshot);
+  solverJob=solveCube(snapshot,message=>$('#solver-status').textContent=message);updatePlaybackControls();
+  const moves=await solverJob.promise;
+  if(playback||animation||queue.length||solverInput(state)!==input){$('#solver-status').textContent='Hesaplama sırasında küp değişti. Yeniden Çöz düğmesine bas.';return;}
+  if(!moves.length){$('#solver-status').textContent='Küp zaten çözülmüş durumda.';return;}
+  solutionBase=snapshot;draftDirty=true;$('#sequence').value=moves.join(' ');$('#sequence-error').hidden=true;
+  $('#solver-status').textContent=`${moves.length} hamlelik çözüm doğrulandı. Çözümü oynat veya Adım adım seç.`;
+ }catch(error){$('#solver-status').textContent=error.message;}
+ finally{solverJob=null;updateHistory();}
+};
+$('#cancel-solve').onclick=()=>solverJob?.cancel();
 $('#sequence').oninput=()=>{draftDirty=true;$('#sequence-error').hidden=true;updatePlaybackControls();};
 $('#sequence').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey){e.preventDefault();startPlayback('auto');}};
 function renderKeys(){
@@ -101,10 +122,10 @@ document.addEventListener('keydown',e=>{
  if(e.ctrlKey||e.metaKey)return;
  if(e.code==='Space'&&playback){e.preventDefault();if(!e.repeat)advance();return;}
  const arrows={ArrowLeft:[-.12,0],ArrowRight:[.12,0],ArrowUp:[0,.1],ArrowDown:[0,-.1]};
- if(arrows[e.key]){e.preventDefault();const [dy,dp]=arrows[e.key];yaw+=dy;pitch=Math.max(-1.5,Math.min(1.5,pitch+dp));return;}
+ if(arrows[e.key]){e.preventDefault();const [dy,dp]=arrows[e.key];yaw+=dy;pitch+=dp;return;}
  if(e.repeat)return;const f=FACES.find(f=>keys[f]===e.key.toLowerCase());if(f){e.preventDefault();enqueue(f+(e.shiftKey?"'":mode));}
 },true);
-let drag=null;canvas.onpointerdown=e=>{drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);canvas.focus({preventScroll:true});};canvas.onpointermove=e=>{if(!drag)return;yaw+=(e.clientX-drag.x)*.008;pitch=Math.max(-1.5,Math.min(1.5,pitch+(e.clientY-drag.y)*.008));drag={x:e.clientX,y:e.clientY};};canvas.onpointerup=canvas.onpointercancel=()=>drag=null;canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.6,Math.min(1.45,zoom-e.deltaY*.001));},{passive:false});
+let drag=null;canvas.onpointerdown=e=>{drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);canvas.focus({preventScroll:true});};canvas.onpointermove=e=>{if(!drag)return;yaw+=(e.clientX-drag.x)*.008;pitch+=(e.clientY-drag.y)*.008;drag={x:e.clientX,y:e.clientY};};canvas.onpointerup=canvas.onpointercancel=()=>drag=null;canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.6,Math.min(1.45,zoom-e.deltaY*.001));},{passive:false});
 const view=v=>rotate(rotate(v,[0,1,0],yaw),[1,0,0],pitch);
 function basis(n){const a=Math.abs(n[1])>.5?[1,0,0]:[0,1,0];return [a,cross(n,a)];}
 function draw(now){
