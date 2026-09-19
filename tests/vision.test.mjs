@@ -1,8 +1,17 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync,existsSync} from 'node:fs';
-import {detectFace,alignFaces,rotateGrid,classifyColor} from '../public/vision.js';
+import {detectFace,alignFaces,rotateGrid,classifyColor,assessPhotoFaces} from '../public/vision.js';
 import {validate,FACES,fromFaces,apply,facelets} from '../public/cube.js';
 const root=new URL('./fixtures/real/',import.meta.url),available=existsSync(new URL('manifest.json',root));
 const expected=['LFDLLLDDU','LFFBRDBDU','RBBFBUFBU','BUDRDUFLU','BRRDFBDLL','LRRFURRUF'];
+test('tek tek seçilen yönsüz fotoğraflar çözülemez diye reddedilmez',()=>{
+ const faces=Object.fromEntries(expected.map(s=>[s[4],[...s]]));
+ assert.equal(validate(faces).ok,false);
+ const result=assessPhotoFaces(faces);assert.equal(result.ok,true);assert.equal(validate(result.faces).ok,true);
+ const reread={...result.faces,U:faces.U};
+ assert.equal(assessPhotoFaces(reread).ok,true);
+ const invalid=structuredClone(faces);invalid.U[0]='B';
+ assert.equal(assessPhotoFaces(invalid).ok,false);
+});
 test('altı gerçek fotoğraftaki 54 kare köşe seçilmeden doğru okunur',{skip:!available},()=>{
  const manifest=JSON.parse(readFileSync(new URL('manifest.json',root),'utf8'));
  const faces={};

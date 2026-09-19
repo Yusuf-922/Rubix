@@ -1,7 +1,7 @@
 import {FACES,COLORS,LABELS,NORMAL,solved,clone,dot,cross,rotate,parse,apply,inverse,facelets,fromFaces,validate} from './cube.js';
-import {sampleFace,homography,distance} from './photo.js';
+import {sampleFace,homography} from './photo.js';
 import {parseSequence,Playback,DEFAULT_KEYS,validateKeys} from './playback.js';
-import {detectFace,classifyColor,COLOR_NAMES,rotateGrid,alignFaces,hsv} from './vision.js';
+import {detectFace,classifyColor,COLOR_NAMES,rotateGrid,alignFaces,assessPhotoFaces,hsv} from './vision.js';
 import {projectedHistory,historyRequest} from './history.js';
 import {solveCube,solverInput} from './solver.js';
 import {Orbit} from './orbit.js';
@@ -184,8 +184,9 @@ function reclassify(){
  renderFace();
 }
 function getFaces(){return Object.fromEntries(FACES.map(f=>[f,faceData[f]?.colors]));}
-function check(){const count=FACES.filter(f=>faceData[f]?.raw).length;$('#face-count').textContent=`${count} / 6 hazır`;let result=count===6?validate(getFaces()):{ok:false,message:`${6-count} yüz daha gerekiyor. Fotoğrafları otomatik tanı düğmesini kullan.`};
- if(count===6){const centers=FACES.map(f=>faceData[f].raw[4]);if(centers.some((a,i)=>centers.some((b,j)=>j>i&&distance(a,b)<12)))result={ok:false,message:'İki merkez rengi çok benzer. Aynı yüzü tekrar seçmediğini ve ışığı kontrol et.'};}
+let photoCheckKey='',photoCheckResult=null;
+function check(){const count=FACES.filter(f=>faceData[f]?.raw).length;$('#face-count').textContent=`${count} / 6 hazır`;let result={ok:false,message:`${6-count} yüz daha gerekiyor. Fotoğrafları otomatik tanı düğmesini kullan.`};
+ if(count===6){const faces=getFaces(),key=JSON.stringify(faces);if(key!==photoCheckKey){photoCheckResult=assessPhotoFaces(faces);photoCheckKey=key;}result=photoCheckResult;}
  $('#validation').textContent=result.message;$('#validation').classList.toggle('ok',result.ok);$('#build-cube').disabled=!result.ok;return result;
 }
 function renderFace(){refreshSelect();const d=faceData[selected];$$('.face-tab').forEach(b=>{b.classList.toggle('active',b.dataset.face===selected);b.classList.toggle('ready',!!faceData[b.dataset.face]?.raw);b.setAttribute('aria-pressed',b.dataset.face===selected);});$('#face-title').textContent=selected+' · '+LABELS[selected]+' yüz';$('#face-state').textContent=d?.raw?'Renkler okundu':d?'Köşeleri seç':'Fotoğraf bekleniyor';$('#orientation').textContent='Fotoğrafın üst kenarındaki komşu: '+oriented[selected];
@@ -204,6 +205,6 @@ function drawPhoto(){const c=pc.getContext('2d'),r=pc.getBoundingClientRect(),d=
 pc.onpointerdown=e=>{const d=faceData[selected];if(!d||!photoRect||d.corners.length===4)return;const r=pc.getBoundingClientRect(),x=(e.clientX-r.left-photoRect.x)/photoRect.scale,y=(e.clientY-r.top-photoRect.y)/photoRect.scale;if(x<0||y<0||x>d.img.width||y>d.img.height)return;d.corners.push([x,y]);if(d.corners.length===4){try{d.raw=sampleFace(d.img,d.corners);d.manual={};reclassify();}catch(err){toast(err.message);d.corners=[];}}renderFace();};
 $('#recrop').onclick=()=>{const d=faceData[selected];if(d){d.corners=[];d.raw=null;d.colors=null;d.manual={};d.auto=false;d.turns=0;reclassify();}};
 $('#rotate-face').onclick=()=>{const d=faceData[selected];if(!d?.raw)return;rotateData(d);reclassify();toast('Yüz renkleri saat yönünde çevrildi.');};
-$('#build-cube').onclick=()=>{if(!check().ok)return;initial=fromFaces(getFaces());resetState(initial);displayColors=Object.fromEntries(FACES.map(f=>[f,swatch(f)]));$('#source-label').textContent='Fotoğraflarından oluşturuldu';references();canvas.focus({preventScroll:true});$('#stage').scrollIntoView({block:'start',behavior:'smooth'});toast('Küpün hazır. Şimdi bir hamle yap.');};
+$('#build-cube').onclick=()=>{const result=check();if(!result.ok)return;if(result.rotations){for(const f of FACES)for(let i=0;i<result.rotations[f];i++)rotateData(faceData[f]);reclassify();analysisStatus('Yüz yönleri eşleştirildi; küp durumu geçerli.');}initial=fromFaces(result.faces);resetState(initial);displayColors=Object.fromEntries(FACES.map(f=>[f,swatch(f)]));$('#source-label').textContent='Fotoğraflarından oluşturuldu';references();canvas.focus({preventScroll:true});$('#stage').scrollIntoView({block:'start',behavior:'smooth'});toast('Küpün hazır. Şimdi bir hamle yap.');};
 $('#help-toggle').onclick=()=>$('#help').showModal();$('#close-help').onclick=()=>$('#help').close();$('#help').onclick=e=>{if(e.target===$('#help')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}};
 new ResizeObserver(drawPhoto).observe($('#photo-wrap'));renderFace();refresh();

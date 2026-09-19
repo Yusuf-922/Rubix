@@ -64,6 +64,14 @@ export function detectFace(image) {
  return {corners,raw,colors:raw.map(classifyColor),score:best.score,components:parts.length};
 }
 export function rotateGrid(values){return [6,3,0,7,4,1,8,5,2].map(i=>values[i]);}
+export function assessPhotoFaces(faces){
+ const direct=validate(faces);
+ if(direct.ok)return {...direct,faces};
+ const aligned=alignFaces(faces);
+ if(!aligned.ok)return {ok:false,message:aligned.message};
+ if(aligned.ambiguous)return {ok:false,ambiguous:true,message:`Renkler çözülebilir bir küp oluşturuyor; ${aligned.count} farklı yüz yönü mümkün. Fotoğrafların üst kenarlarını kontrol ederek yönleri netleştir.`};
+ return {...aligned,message:'Küp çözülebilir. Fotoğraf yönleri Küpü oluştur düğmesine bastığında otomatik eşleştirilecek.'};
+}
 export function alignFaces(faces) {
  if(FACES.some(f=>!faces[f]||faces[f][4]!==f))return {ok:false,message:'Altı farklı merkez rengi gerekli.'};
  const variants=Object.fromEntries(FACES.map(f=>{const v=[faces[f]];for(let i=1;i<4;i++)v.push(rotateGrid(v[i-1]));return [f,v];}));

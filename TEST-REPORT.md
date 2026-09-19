@@ -58,4 +58,10 @@ Gönderilen altı fotoğraftaki 54 renk hücresi otomatik bulundu ve görsel ref
 
 ## Kapsam
 
+### Tek tek fotoğraf seçiminde doğrulama
+
+28 otomatik test başarılı. Fotoğraf kontrolü önce mevcut yönleri, gerekirse tüm 4096 yüz dönüşü birleşimini değerlendirir. Tek bir geçerli hizalama varsa oluşturma etkinleşir ve hizalama oluştururken uygulanır. Birden fazla geçerli yön için çözülemez uyarısı yerine yön netleştirme bilgisi gösterilir. Ham RGB merkez benzerliği artık geçerli küpü engellemez.
+
+Tarayıcıda klasördeki altı fotoğraf tek tek seçildi, küp oluşturuldu ve 21 hamlelik çözüm doğrulandı. Hizalamadan sonra fotoğrafları yeniden seçme kontrol edildi. Bir beyaz kare maviye çevrilince oluşturma engellendi; beyaza geri çevrilince otomatik açıldı.
+
 Bu sonuç gönderilen altı fotoğraf ve mevcut masaüstü tarayıcı için doğrulandı. Örtülü yüz, yoğun parlama, çok eğik çekim veya farklı renk düzenleri için aynı doğruluk garantisi verilmez. Belirsiz algılamada elle düzeltme kullanılabilir. Sayfa yenilendiğinde mevcut oturum sıfırlanır; klasördeki fotoğraflar korunur.
