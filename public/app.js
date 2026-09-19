@@ -9,6 +9,7 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const hexrgb=h=>h.match(/\w\w/g).map(x=>parseInt(x,16));
 let state=solved(),initial=clone(state),history=[],cursor=0,queue=[],animation=null,mode='',zoom=1,displayColors={...COLORS};
 const orbit=new Orbit();
+let liveBase=clone(initial),initialSource='Örnek küp';
 let selected='U',paint='U',photos=[],faceData={},toastTimer;
 let playback=null,liveSnapshot=null,draftDirty=false,keys={...DEFAULT_KEYS};
 let solutionBase=null,solverJob=null;
@@ -55,8 +56,9 @@ function undo(){
 function redo(){if(playback)stopPlayback();const job=historyRequest('redo',history,cursor,[animation,...queue]);if(job)enqueue(job.move,job.kind);}
 $('#undo').onclick=undo;
 $('#redo').onclick=redo;
-function resetState(s){if(playback)stopPlayback();clearSolution();solverJob?.cancel();state=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();$('#move-description').textContent='Yüz harfine basarak veya aşağıdaki düğmelerle döndür.';}
-$('#reset-cube').onclick=()=>{resetState(initial);toast('Küp başlangıç durumuna döndü.');};
+function resetState(s){if(playback)stopPlayback();clearSolution();solverJob?.cancel();state=clone(s);liveBase=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();$('#move-description').textContent='Yüz harfine basarak veya aşağıdaki düğmelerle döndür.';}
+$('#reset-cube').onclick=()=>{resetState(initial);$('#source-label').textContent=initialSource;toast('Küp başlangıç durumuna döndü.');};
+$('#solve-reset').onclick=()=>{resetState(solved());$('#source-label').textContent='Çözülmüş küp';toast('Küp çözülmüş hale sıfırlandı.');};
 $('#reset-view').onclick=()=>{orbit.reset();zoom=1;};
 $('#zoom-in').onclick=()=>zoom=Math.min(1.45,zoom+.1);$('#zoom-out').onclick=()=>zoom=Math.max(.6,zoom-.1);
 $('#speed').oninput=()=>$('#speed-value').textContent=(520/(1000-Number($('#speed').value))).toFixed(1)+'×';
@@ -79,7 +81,7 @@ function startPlayback(playMode){
  let entries;try{entries=parseSequence($('#sequence').value);if(!entries.length)throw Error('Önce bir hamle yap veya akışa hamle yaz.');$('#sequence-error').hidden=true;}catch(err){$('#sequence-error').textContent=err.message;$('#sequence-error').hidden=false;return;}
  if(playback)stopPlayback();
  liveSnapshot={state:clone(state),source:$('#source-label').textContent};
- state=clone(solutionBase||initial);playback=new Playback(entries,playMode);$('#source-label').textContent=solutionBase?'Çözüm önizlemesi':'Akış önizlemesi';
+ state=clone(solutionBase||liveBase);playback=new Playback(entries,playMode);$('#source-label').textContent=solutionBase?'Çözüm önizlemesi':'Akış önizlemesi';
  // Move keyboard focus out of the editor so Space advances rather than types.
  canvas.focus({preventScroll:true});$('#stage').scrollIntoView({block:'start',behavior:'smooth'});updateHistory();startNext();
 }
@@ -119,7 +121,7 @@ document.addEventListener('keydown',e=>{
  const textInput=e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'&&!['range','button','checkbox','file'].includes(e.target.type)||e.target.isContentEditable;
  const editing=textInput&&!e.target.readOnly&&(e.target!==$('#sequence')||draftDirty);
  const z=e.code==='KeyZ'||e.key.toLowerCase()==='z',y=e.code==='KeyY'||e.key.toLowerCase()==='y';
- if((e.ctrlKey||e.metaKey)&&(z||y)&&!editing){e.preventDefault();e.stopPropagation();if(!e.repeat){if(y||e.shiftKey)redo();else undo();}return;}
+ if((e.ctrlKey||e.metaKey)&&(z||y)&&!editing){e.preventDefault();e.stopPropagation();if(!e.repeat){if(y)redo();else if(!e.shiftKey)undo();}return;}
  if((textInput||e.target.tagName==='SELECT')&&!(playback&&e.target===$('#sequence')&&e.code==='Space'))return;
  if(e.ctrlKey||e.metaKey)return;
  if(e.code==='Space'&&playback){e.preventDefault();if(!e.repeat)advance();return;}
@@ -205,6 +207,6 @@ function drawPhoto(){const c=pc.getContext('2d'),r=pc.getBoundingClientRect(),d=
 pc.onpointerdown=e=>{const d=faceData[selected];if(!d||!photoRect||d.corners.length===4)return;const r=pc.getBoundingClientRect(),x=(e.clientX-r.left-photoRect.x)/photoRect.scale,y=(e.clientY-r.top-photoRect.y)/photoRect.scale;if(x<0||y<0||x>d.img.width||y>d.img.height)return;d.corners.push([x,y]);if(d.corners.length===4){try{d.raw=sampleFace(d.img,d.corners);d.manual={};reclassify();}catch(err){toast(err.message);d.corners=[];}}renderFace();};
 $('#recrop').onclick=()=>{const d=faceData[selected];if(d){d.corners=[];d.raw=null;d.colors=null;d.manual={};d.auto=false;d.turns=0;reclassify();}};
 $('#rotate-face').onclick=()=>{const d=faceData[selected];if(!d?.raw)return;rotateData(d);reclassify();toast('Yüz renkleri saat yönünde çevrildi.');};
-$('#build-cube').onclick=()=>{const result=check();if(!result.ok)return;if(result.rotations){for(const f of FACES)for(let i=0;i<result.rotations[f];i++)rotateData(faceData[f]);reclassify();analysisStatus('Yüz yönleri eşleştirildi; küp durumu geçerli.');}initial=fromFaces(result.faces);resetState(initial);displayColors=Object.fromEntries(FACES.map(f=>[f,swatch(f)]));$('#source-label').textContent='Fotoğraflarından oluşturuldu';references();canvas.focus({preventScroll:true});$('#stage').scrollIntoView({block:'start',behavior:'smooth'});toast('Küpün hazır. Şimdi bir hamle yap.');};
+$('#build-cube').onclick=()=>{const result=check();if(!result.ok)return;if(result.rotations){for(const f of FACES)for(let i=0;i<result.rotations[f];i++)rotateData(faceData[f]);reclassify();analysisStatus('Yüz yönleri eşleştirildi; küp durumu geçerli.');}initial=fromFaces(result.faces);resetState(initial);displayColors=Object.fromEntries(FACES.map(f=>[f,swatch(f)]));initialSource='Fotoğraflarından oluşturuldu';$('#source-label').textContent=initialSource;references();canvas.focus({preventScroll:true});$('#stage').scrollIntoView({block:'start',behavior:'smooth'});toast('Küpün hazır. Şimdi bir hamle yap.');};
 $('#help-toggle').onclick=()=>$('#help').showModal();$('#close-help').onclick=()=>$('#help').close();$('#help').onclick=e=>{if(e.target===$('#help')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}};
 new ResizeObserver(drawPhoto).observe($('#photo-wrap'));renderFace();refresh();

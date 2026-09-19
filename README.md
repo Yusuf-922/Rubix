@@ -33,7 +33,7 @@ Fotoğraflar başlangıç durumunu aktarır; fiziksel hamleler canlı izlenmez. 
 - **Shift + Enter** yeni satır oluşturur. Akıcı oynatma satır sonunda bekler; **Boşluk** sonraki satırı başlatır.
 - **Adım adım** başlangıca döner ve bekler. Her **Boşluk** basışı bir hamleyi oynatır. Animasyon sürerken ek basışlar sıraya alınmaz.
 - **Duraklat** mevcut hamlenin bitmesini bekleyip akışı durdurur. **Canlı küpe dön** önizleme öncesindeki küpü geri getirir.
-- **Ctrl + Z** canlı küpte son hamleyi geri alır; **Ctrl + Shift + Z** veya **Ctrl + Y** yineler. Bu komutlar animasyon sürerken de sıraya alınır. Düzenlenmiş metin alanında yazının kendi geri alma/yinelemesi çalışır; salt okunur ya da otomatik kayıt alanında küp komutları kullanılabilir.
+- **Ctrl + Z** canlı küpte son hamleyi geri alır; **Ctrl + Y** yineler. Ctrl+Shift+Z küp için işlem yapmaz. Bu komutlar animasyon sürerken de sıraya alınır. Düzenlenmiş metin alanında yazının kendi geri alma/yinelemesi çalışır; salt okunur ya da otomatik kayıt alanında küp komutları kullanılabilir.
 - Yön tuşları bakış açısını değiştirir. **Klavye kısayolları** bölümünde her yüze farklı bir harf veya rakam atanabilir; tercihler tarayıcıda saklanır.
 - Akışın notasyonu özel kısayollardan bağımsızdır: U, R, F, D, L, B ve bunların ters/çift dönüşleri kullanılır.
 
@@ -42,6 +42,8 @@ Fotoğraflar başlangıç durumunu aktarır; fiziksel hamleler canlı izlenmez. 
 `npm test`: Küp motoru, 500 hamlelik dizi, imkânsız durumlar, perspektif, renk okuma, çok satırlı oynatma, kısayollar, animasyon sırasında geri alma/yineleme ve altı gerçek fotoğraf (19 test). Gerçek fotoğraf testi yerel `tests/fixtures/real` verisini kullanır; bu özel görüntüler Git'e eklenmez. Veriyi yeniden hazırlamak için Pillow bulunan Python ile `tests/prepare-real-photos.py` çalıştırılır. Veri yoksa ilgili test açıkça atlanır.
 
 Uygulama JavaScript küp modeli, perspektif projeksiyon kullanan Canvas 3B çizimi ve yerel Node.js sunucusundan oluşur. Çözüm için MIT lisanslı cubejs yerel olarak paketlenmiştir; npm kurulumu veya çalışma anında internet gerekmez. Ders ve algoritma kütüphanesi sonraki aşamalardır.
+
+**Küpü sıfırla** çözülmüş küpü getirir ve hamle geçmişini temizler. **Başa dön**, fotoğraflardan oluşturulan başlangıç küpünü geri getirir. Sıfırlamadan sonraki hamlelerin oynatımı çözülmüş küpten başlar.
 
 ## Küpü çöz
 

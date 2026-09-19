@@ -6,3 +6,5 @@
 /* Compact UI at browser zoom 100%; canvas coordinates remain in screen pixels. */
 body{zoom:.9}.solver-panel{padding:14px 0 0}.solver-panel .row{justify-content:flex-start} [hidden]{display:none!important}
 @media(max-width:720px){body{zoom:1}}
+
+.history-actions{flex-wrap:wrap}
