@@ -12,7 +12,10 @@ export function classifyColor(rgb) {
  if(s<.27&&v>.35)return 'U';
  // Kırmızı ile turuncunun tonları ışığa en hassas ikilidir. Eşik, gerçek
  // küp fotoğraflarındaki koyu kırmızı ve sıcak turuncu örneklerine göre ayrılır.
- if(h<14||h>=345)return 'R';
+ // Parlak turuncular kırmızıya çok yaklaşabilir. Kırmızı aralığını yalnızca
+ // saf kırmızı tonlara (ve koyu kırmızıya) ayırmak, turuncu etiketleri için
+ // daha güvenli bir varsayılandır.
+ if(h>=350||h<7||(h<12&&v<.8))return 'R';
  if(h<38)return 'L';
  if(h<76)return 'D';
  if(h<175)return 'F';

@@ -22,6 +22,7 @@ test('altı gerçek fotoğraftaki 54 kare köşe seçilmeden doğru okunur',{ski
 test('dört fotoğraf dönüşü hücre sırasını korur; sabit beyaz/kırmızı/turuncu ayrımı',()=>{
  let grid=Array.from({length:9},(_,i)=>i);for(let i=0;i<4;i++)grid=rotateGrid(grid);assert.deepEqual(grid,Array.from({length:9},(_,i)=>i));
  assert.equal(classifyColor([216,202,193]),'U');assert.equal(classifyColor([178,42,20]),'R');assert.equal(classifyColor([218,82,32]),'L');
+ assert.equal(classifyColor([220,50,18]),'L');assert.equal(classifyColor([190,25,17]),'R');
 });
 test('yüz içermeyen düz bir görsel güvenli şekilde reddedilir',()=>{
  const width=120,height=160,data=new Uint8ClampedArray(width*height*4).fill(255);assert.throws(()=>detectFace({width,height,data}),/bulunamadı/);

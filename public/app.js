@@ -216,8 +216,17 @@ function check(){const count=FACES.filter(f=>faceData[f]?.raw).length;$('#face-c
  if(count===6){const faces=getFaces(),key=JSON.stringify(faces);if(key!==photoCheckKey){photoCheckResult=assessPhotoFaces(faces);photoCheckKey=key;}result=photoCheckResult;}
  $('#validation').textContent=result.message;$('#validation').classList.toggle('ok',result.ok);$('#build-cube').disabled=!result.ok;return result;
 }
+function paintSquare(d,index){
+ if(index===4&&paint!==selected){
+  const occupied=faceData[paint];
+  if(occupied&&occupied!==d){analysisStatus(`${COLOR_NAMES[paint]} merkezli başka bir fotoğraf var. Önce o yüzün merkez rengini düzelt.`);return;}
+  delete faceData[selected];faceData[paint]=d;selected=paint;d.manual[4]=paint;
+  analysisStatus(`Merkez rengi ${COLOR_NAMES[paint]} olarak düzeltildi. Fotoğraf doğru yüze taşındı.`);
+ }else{d.manual[index]=paint;analysisStatus(index===4?`Merkez rengi ${COLOR_NAMES[paint]} olarak onaylandı.`:'Renk düzeltildi. Gerekirse Yönleri bul ile yüzleri yeniden eşleştir.');}
+ reclassify();
+}
 function renderFace(){refreshSelect();const d=faceData[selected];$$('.face-tab').forEach(b=>{b.classList.toggle('active',b.dataset.face===selected);b.classList.toggle('ready',!!faceData[b.dataset.face]?.raw);b.setAttribute('aria-pressed',b.dataset.face===selected);});$('#face-title').textContent=selected+' · '+LABELS[selected]+' yüz';$('#face-state').textContent=d?.raw?'Renkler okundu':d?'Köşeleri seç':'Fotoğraf bekleniyor';$('#orientation').textContent='Fotoğrafın üst kenarındaki komşu: '+oriented[selected];
- $('#face-grid').replaceChildren();for(let i=0;i<9;i++){const b=document.createElement('button');const color=d?.colors?.[i];b.style.background=color?swatch(color):'#2b394d';b.className=(i===4?'center ':'')+(d?.uncertain?.includes(i)?'uncertain':'');b.disabled=!d?.raw||i===4;b.title=i===4?'Merkez referansı':`${i+1}. kare${d?.uncertain?.includes(i)?' · rengi kontrol et':''}`;b.setAttribute('aria-label',`${i+1}. kare: ${color?COLOR_NAMES[color]:'okunmadı'}`);b.onclick=()=>{d.manual[i]=paint;analysisStatus('Renk düzeltildi. Gerekirse Yönleri bul ile yüzleri yeniden eşleştir.');reclassify();};$('#face-grid').append(b);}
+ $('#face-grid').replaceChildren();for(let i=0;i<9;i++){const b=document.createElement('button');const color=d?.colors?.[i];b.style.background=color?swatch(color):'#2b394d';b.className=(i===4?'center ':'')+(d?.uncertain?.includes(i)?'uncertain':'');b.disabled=!d?.raw;b.title=i===4?'Merkez rengi · düzeltmek için tıkla':`${i+1}. kare${d?.uncertain?.includes(i)?' · rengi kontrol et':''}`;b.setAttribute('aria-label',`${i===4?'Merkez kare':i+1+'. kare'}: ${color?COLOR_NAMES[color]:'okunmadı'}`);b.onclick=()=>paintSquare(d,i);$('#face-grid').append(b);}
  $('#palette').replaceChildren();for(const f of FACES){const b=document.createElement('button');b.style.background=COLORS[f];b.className=paint===f?'selected':'';b.title=COLOR_NAMES[f];b.setAttribute('aria-label',COLOR_NAMES[f]);b.setAttribute('aria-pressed',paint===f);b.onclick=()=>{paint=f;renderFace();};$('#palette').append(b);}
  $('#rotate-face').disabled=!d?.raw;$('#recrop').disabled=!d;$('#align-faces').disabled=FACES.some(f=>!faceData[f]?.raw);$('#photo-empty').hidden=!!d;$('#crop-instruction').textContent=d?.corners.length===4?(d.auto?`Yüz otomatik bulundu${d.turns?' · '+d.turns*90+'° hizalandı':''}. Renkleri önizlemeden kontrol edebilirsin.`:'Renkler okundu. Sarı çerçeveli kareleri kontrol et.'):d?`Köşe ${Math.min((d?.corners.length||0)+1,4)} / 4: ${['sol üst','sağ üst','sağ alt','sol alt'][d?.corners.length||0]} noktasını seç.`:'Fotoğraf seçildiğinde yüz otomatik bulunur.';check();drawPhoto();
 }
