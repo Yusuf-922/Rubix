@@ -29,7 +29,7 @@ function toast(message){$('#toast').textContent=message;$('#toast').classList.ad
 function references(){for(const [id,f] of [['#ref-up','U'],['#ref-front','F']])$(id).innerHTML=`<i style="background:${displayColors[f]}"></i>${LABELS[f]} · ${f}`;}
 references();
 function addFaceButtons(container,stage=false){for(const [index,f] of FACES.entries()){const b=document.createElement('button');let pressTimer=null,tapTimer=null,held=false,pointerType='mouse';b.className=stage?'stage-face-button':'';b.innerHTML=stage?`<strong>${f}</strong><small>${LABELS[f]}</small>`:`<strong>${f}</strong><small>${LABELS[f]}</small><span class="shortcut-key"></span>`;b.dataset.face=f;b.dataset.index=index;b.setAttribute('aria-label',`${LABELS[f]} yüzünü döndür`);b.onpointerdown=e=>{pointerType=e.pointerType;if(e.pointerType==='mouse'&&e.button===2){e.preventDefault();clearTimeout(tapTimer);enqueue(f+"'");return;}if(e.button!==0)return;held=false;clearTimeout(tapTimer);pressTimer=setTimeout(()=>{held=true;enqueue(f+'2');},520);};b.onpointerup=b.onpointercancel=b.onpointerleave=()=>clearTimeout(pressTimer);b.oncontextmenu=e=>e.preventDefault();b.onclick=e=>{if(held){e.preventDefault();return;}if(pointerType==='touch'||pointerType==='pen'){clearTimeout(tapTimer);tapTimer=setTimeout(()=>enqueue(f+mode),260);}else enqueue(f+mode);};b.ondblclick=e=>{if(held)return;if(pointerType==='touch'||pointerType==='pen'){e.preventDefault();clearTimeout(tapTimer);enqueue(f+"'");}};container.append(b);}}
-addFaceButtons($('#move-buttons'));addFaceButtons($('#stage-move-buttons'),true);
+addFaceButtons($('#stage-move-buttons'),true);
 $$('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;$$('[data-mode]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b);});});
 function enqueue(move,kind='move'){easterMessage='';if(playback)stopPlayback();if(queue.length>40){toast('Önce sıradaki hamlelerin tamamlanmasını bekle.');return;}clearSolution();queue.push({move,kind});updateHistory();startNext();}
 function startNext(){
@@ -126,9 +126,7 @@ $('#sequence').oninput=()=>{draftDirty=true;$('#sequence-error').hidden=true;upd
 $('#sequence').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey){e.preventDefault();startPlayback('auto');}};
 function renderKeys(){
  $('#shortcut-fields').replaceChildren();for(const f of FACES){const label=document.createElement('label');label.textContent=f+' · '+LABELS[f];const input=document.createElement('input');input.maxLength=1;input.value=keys[f];input.dataset.face=f;input.setAttribute('aria-label',f+' hamlesinin kısayolu');label.append(input);$('#shortcut-fields').append(label);}
- $$('#move-buttons button').forEach(b=>b.querySelector('.shortcut-key').textContent='Tuş: '+keys[b.dataset.face].toUpperCase()+' · '+(Number(b.dataset.index)+1));
  $$('#stage-move-buttons button').forEach(b=>b.title=`${LABELS[b.dataset.face]} yüz · ${keys[b.dataset.face].toUpperCase()} veya ${Number(b.dataset.index)+1}`);
- $('.key-help').textContent='Tuşlar: '+FACES.map((f,index)=>`${keys[f].toUpperCase()} / ${index+1} → ${f}`).join(' · ')+' | Shift: ters yön · Ctrl+Z: geri al';
  $('.orbit-hint').textContent='Sürükle veya ← ↑ ↓ →: bakış açısı · Tekerlek: yakınlaş';
 }
 function saveKeys(next){if(!validateKeys(next)){$('#shortcut-status').textContent='Her yüze farklı bir harf veya rakam ata.';return;}keys=next;try{localStorage.setItem('rubix-shortcuts',JSON.stringify(keys));$('#shortcut-status').textContent='Kısayollar bu tarayıcıya kaydedildi.';}catch{$('#shortcut-status').textContent='Kısayollar bu oturum için ayarlandı.';}renderKeys();}

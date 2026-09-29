@@ -14,3 +14,6 @@
 
 .stage-face-button,.move-buttons button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
 .control-
+
+/* Geçmiş ve hız denetimleri, küpün sağında bağımsız bir grup olarak durur. */
+.cube-stage-layout{grid-template-columns:132px minmax(0,1fr) 160px}.stage-utility{grid-column:3;grid-row:1;align-self:center;display:flex;flex-direction:column;gap:12px;padding-left:8px}.stage-utility .history-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.stage-utility .history-actions button{min-width:0;padding:8px 4px;font-size:.72rem;white-space:nowrap}.stage-utility .speed-label{display:flex;align-items:center;gap:7px;font-size:.75rem}.stage-utility input[type=range]{width:88px}@media(max-width:720px){.stage-utility{grid-column:auto;grid-row:auto;order:2;width:100%;padding-left:0;gap:9px}.stage-utility .history-actions{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}.stage-utility .history-actions button{padding:8px 2px;font-size:.67rem}.stage-utility .speed-label{width:100%;gap:9px}.stage-utility input[type=range]{flex:1;width:auto;min-width:0}}
