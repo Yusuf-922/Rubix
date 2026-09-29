@@ -133,7 +133,7 @@ function saveKeys(next){if(!validateKeys(next)){$('#shortcut-status').textConten
 $('#save-shortcuts').onclick=()=>saveKeys(Object.fromEntries($$('#shortcut-fields input').map(i=>[i.dataset.face,i.value.toLowerCase()])));
 $('#reset-shortcuts').onclick=()=>saveKeys({...DEFAULT_KEYS});renderKeys();updateHistory();
 document.addEventListener('keydown',e=>{
- if($('#help').open||$('#camera-dialog').open||e.altKey)return;
+ if($('#help').open||$('#shortcuts').open||$('#camera-dialog').open||e.altKey)return;
  const textInput=e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'&&!['range','button','checkbox','file'].includes(e.target.type)||e.target.isContentEditable;
  const editing=textInput&&!e.target.readOnly&&(e.target!==$('#sequence')||draftDirty);
  const z=e.code==='KeyZ'||e.key.toLowerCase()==='z',y=e.code==='KeyY'||e.key.toLowerCase()==='y';
@@ -272,5 +272,5 @@ $('#rotate-face').onclick=()=>{const d=faceData[selected];if(!d?.raw)return;rota
 function setPhotoPanel(open){$('#photo-panel').classList.toggle('mobile-open',open);document.body.classList.toggle('photo-panel-open',open);if(open)window.scrollTo({top:0,behavior:'auto'});}
 $('#open-photo-panel').onclick=()=>setPhotoPanel(true);$('#close-photo-panel').onclick=()=>setPhotoPanel(false);
 $('#build-cube').onclick=()=>{const result=check();if(!result.ok)return;if(result.rotations){for(const f of FACES)for(let i=0;i<result.rotations[f];i++)rotateData(faceData[f]);reclassify();analysisStatus('Yüz yönleri eşleştirildi; küp durumu geçerli.');}initial=fromFaces(result.faces);resetState(initial);displayColors=Object.fromEntries(FACES.map(f=>[f,swatch(f)]));initialSource='Fotoğraflarından oluşturuldu';references();holdCube(initialSource);setPhotoPanel(false);canvas.focus({preventScroll:true});$('#stage').scrollIntoView({block:'start',behavior:'smooth'});toast('Fotoğraflarından oluşturulan küp tutuldu. Çözebilirsin.');};
-$('#help-toggle').onclick=()=>$('#help').showModal();$('#close-help').onclick=()=>$('#help').close();$('#help').onclick=e=>{if(e.target===$('#help')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}};
+$('#help-toggle').onclick=()=>$('#help').showModal();$('#shortcuts-toggle').onclick=()=>$('#shortcuts').showModal();for(const id of ['help','shortcuts']){const dialog=$('#'+id);$('#close-'+id).onclick=()=>dialog.close();dialog.onclick=e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}};}
 new ResizeObserver(drawPhoto).observe($('#photo-wrap'));renderFace();refresh();
