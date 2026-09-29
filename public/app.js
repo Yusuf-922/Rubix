@@ -16,6 +16,8 @@ const photoDataByUrl=new Map();
 let playback=null,liveSnapshot=null,draftDirty=false,keys={...DEFAULT_KEYS};
 let solutionBase=null,solverJob=null;
 let heldCube=null,heldSource='';
+let konamiIndex=0,konamiArmed=false,easterMessage='';
+const KONAMI=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','B','A'];
 let explanationMode='text';
 function clearSolution(){if(solutionBase){solutionBase=null;draftDirty=false;}if(!solverJob)$('#solver-status').textContent='Mevcut küp için çözüm bul; tamamını veya adım adım izle.';}
 try{const stored=JSON.parse(localStorage.getItem('rubix-shortcuts'));if(stored&&validateKeys(stored))keys=Object.fromEntries(FACES.map(f=>[f,stored[f].toLowerCase()]));}catch{}
@@ -33,7 +35,7 @@ references();
 function addFaceButtons(container,stage=false){for(const [index,f] of FACES.entries()){const b=document.createElement('button');let pressTimer=null,tapTimer=null,held=false,pointerType='mouse';b.className=stage?'stage-face-button':'';b.innerHTML=stage?`<strong>${f}</strong><small>${LABELS[f]}</small>`:`<strong>${f}</strong><small>${LABELS[f]}</small><span class="shortcut-key"></span>`;b.dataset.face=f;b.dataset.index=index;b.setAttribute('aria-label',`${LABELS[f]} yüzünü döndür`);b.onpointerdown=e=>{if(e.button!==0)return;pointerType=e.pointerType;held=false;pressTimer=setTimeout(()=>{held=true;enqueue(f+'2');},520);};b.onpointerup=b.onpointercancel=b.onpointerleave=()=>clearTimeout(pressTimer);b.oncontextmenu=e=>{e.preventDefault();clearTimeout(tapTimer);enqueue(f+"'");};b.onclick=e=>{if(held){e.preventDefault();return;}if(pointerType==='touch'||pointerType==='pen'){clearTimeout(tapTimer);tapTimer=setTimeout(()=>enqueue(f+mode),260);}else enqueue(f+mode);};b.ondblclick=e=>{if(pointerType==='touch'||pointerType==='pen'){e.preventDefault();clearTimeout(tapTimer);enqueue(f+"'");}};container.append(b);}}
 addFaceButtons($('#move-buttons'));addFaceButtons($('#stage-move-buttons'),true);
 $$('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;$$('[data-mode]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b);});});
-function enqueue(move,kind='move'){if(playback)stopPlayback();if(queue.length>40){toast('Önce sıradaki hamlelerin tamamlanmasını bekle.');return;}clearSolution();queue.push({move,kind});updateHistory();startNext();}
+function enqueue(move,kind='move',secretMove=false){if(!secretMove){konamiArmed=false;konamiIndex=0;}easterMessage='';if(playback)stopPlayback();if(queue.length>40){toast('Önce sıradaki hamlelerin tamamlanmasını bekle.');return;}clearSolution();queue.push({move,kind});updateHistory();startNext();}
 function startNext(){
  if(animation)return;
  const entry=playback?.take();
@@ -46,7 +48,8 @@ function updateHistory(){
  $('#undo').disabled=!!playback||projected.index===0;$('#redo').disabled=!!playback||projected.index===projected.moves.length;
  $('#move-count').textContent=playback?`${playback.index} / ${playback.entries.length} · önizleme`:`${cursor} hamle${queue.length?' · '+queue.length+' sırada':''}`;
  const el=$('#notation');el.replaceChildren();
- if(playback){let line=-1,row;playback.entries.forEach((entry,i)=>{if(line!==entry.line){line=entry.line;row=document.createElement('div');row.className='notation-line';const label=document.createElement('span');label.className='line-number';label.textContent=line+1;row.append(label);el.append(row);}const token=document.createElement('span');token.className='token'+(i<playback.index?' complete':i===playback.index?' current':' future');token.textContent=entry.move;row.append(token);});}
+ if(easterMessage){const note=document.createElement('p');note.className='easter-note';note.textContent=easterMessage;el.append(note);}
+ else if(playback){let line=-1,row;playback.entries.forEach((entry,i)=>{if(line!==entry.line){line=entry.line;row=document.createElement('div');row.className='notation-line';const label=document.createElement('span');label.className='line-number';label.textContent=line+1;row.append(label);el.append(row);}const token=document.createElement('span');token.className='token'+(i<playback.index?' complete':i===playback.index?' current':' future');token.textContent=entry.move;row.append(token);});}
  else {
   history.forEach((m,i)=>{const s=document.createElement('span');s.className='token'+(i>=cursor?' future':'')+(!animation&&i===cursor-1?' current':'');s.textContent=m;el.append(s);});
   if(animation){const s=document.createElement('span');s.className='token current';s.textContent=(animation.kind==='undo'?'↶ ':'')+animation.move;el.append(s);}
@@ -64,9 +67,9 @@ function undo(){
 function redo(){if(playback)stopPlayback();const job=historyRequest('redo',history,cursor,[animation,...queue]);if(job)enqueue(job.move,job.kind);}
 $('#undo').onclick=undo;
 $('#redo').onclick=redo;
-function resetState(s){if(playback)stopPlayback();clearSolution();solverJob?.cancel();state=clone(s);liveBase=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();$('#move-description').textContent='Yüz harfine basarak veya aşağıdaki düğmelerle döndür.';}
+function resetState(s){if(playback)stopPlayback();clearSolution();solverJob?.cancel();konamiIndex=0;konamiArmed=false;easterMessage='';state=clone(s);liveBase=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();$('#move-description').textContent='Yüz harfine basarak veya aşağıdaki düğmelerle döndür.';}
 function heldStateMatches(){return !!heldCube&&solverInput(state)===solverInput(heldCube);}
-function holdCube(source='Tutulan konum'){if(animation||queue.length){toast('Önce süren hamlelerin tamamlanmasını bekle.');return;}heldCube=clone(state);heldSource=source;initial=clone(state);initialSource=source;liveBase=clone(state);history=[];cursor=0;draftDirty=false;clearSolution();$('#source-label').textContent=source;$('#move-description').textContent='Küp tutuldu. Hamleleri buradan itibaren kaydediyorum.';updateHistory();toast('Küp konumu tutuldu. Çözüm hazır.');}
+function holdCube(source='Tutulan konum'){if(animation||queue.length){toast('Önce süren hamlelerin tamamlanmasını bekle.');return;}konamiIndex=0;konamiArmed=false;easterMessage='';heldCube=clone(state);heldSource=source;initial=clone(state);initialSource=source;liveBase=clone(state);history=[];cursor=0;draftDirty=false;clearSolution();$('#source-label').textContent=source;$('#move-description').textContent='Küp tutuldu. Hamleleri buradan itibaren kaydediyorum.';updateHistory();toast('Küp konumu tutuldu. Çözüm hazır.');}
 $('#hold-cube').onclick=()=>holdCube();
 $('#reset-cube').onclick=()=>{resetState(heldCube||initial);$('#source-label').textContent=heldCube?heldSource:initialSource;toast('Küp tutulan konuma döndü.');};
 $('#solve-reset').onclick=()=>{resetState(solved());$('#source-label').textContent='Çözülmüş küp';toast('Küp çözülmüş hale sıfırlandı.');};
@@ -74,9 +77,9 @@ $('#reset-view').onclick=()=>{orbit.reset();zoom=1;};
 $('#zoom-in').onclick=()=>zoom=Math.min(1.45,zoom+.1);$('#zoom-out').onclick=()=>zoom=Math.max(.6,zoom-.1);
 $('#speed').oninput=()=>$('#speed-value').textContent=(520/(1000-Number($('#speed').value))).toFixed(1)+'×';
 function updatePlaybackControls(){
- const held=heldStateMatches()&&!playback&&!animation&&!queue.length;
- $('#hold-cube').hidden=held;$('#hold-cube').disabled=!!playback||!!animation||queue.length>0;
- $('#solve-cube').hidden=!held;$('#solve-cube').disabled=!held||!!solverJob;
+ const secretReady=konamiArmed&&!playback&&!animation&&!queue.length,held=heldStateMatches()&&!playback&&!animation&&!queue.length;
+ $('#hold-cube').hidden=held||secretReady;$('#hold-cube').disabled=!!playback||!!animation||queue.length>0;
+ $('#solve-cube').hidden=!(held||secretReady);$('#solve-cube').disabled=!(held||secretReady)||!!solverJob;
  $('#cancel-solve').hidden=!solverJob;
  $('#replay').textContent=solutionBase?'▶ Çözümü oynat':'▶ Yeniden oynat';
  const busy=!playback&&(!!animation||queue.length>0),empty=!$('#sequence').value.trim();
@@ -114,7 +117,10 @@ $('#use-history').onclick=()=>{clearSolution();draftDirty=false;$('#sequence-err
 $('#explanation-mode').value=explanationMode;
 $('#move-description').hidden=explanationMode==='off';
 $('#explanation-mode').onchange=e=>{explanationMode=e.target.value;try{localStorage.setItem('rubix-explanations',explanationMode);}catch{}if(explanationMode==='off'&&'speechSynthesis'in window)speechSynthesis.cancel();if(animation)explainMove(animation.move);else $('#move-description').hidden=explanationMode==='off';};
+function trackKonami(key){if(!heldCube||solverInput(heldCube)!==solverInput(solved())){konamiIndex=0;return false;}konamiIndex=key===KONAMI[konamiIndex]?konamiIndex+1:key===KONAMI[0]?1:0;if(konamiIndex!==KONAMI.length)return false;konamiIndex=0;konamiArmed=true;return true;}
+function revealEasterEgg(){konamiArmed=false;easterMessage='Uygulamamı kullanıp bunu denemiş olman beni çok sevindirdi.\nUygulama Geliştiricisi Yusuf Birdal’dan sevgilerle';solutionBase=null;history=[];cursor=0;queue=[];draftDirty=true;$('#sequence').value='';$('#solver-status').textContent='Bu küpün çözümü bugünlük gizli kaldı.';$('#move-description').textContent='Bir sürpriz buldun.';updateHistory();}
 $('#solve-cube').onclick=async()=>{
+ if(konamiArmed){revealEasterEgg();return;}
  if(!heldStateMatches()||solverJob||playback||animation||queue.length)return;
  const snapshot=clone(state);
  try{
@@ -149,11 +155,12 @@ document.addEventListener('keydown',e=>{
  if((e.ctrlKey||e.metaKey)&&(z||y)&&!editing){e.preventDefault();e.stopPropagation();if(!e.repeat){if(y)redo();else if(!e.shiftKey)undo();}return;}
  if((textInput||e.target.tagName==='SELECT')&&!(playback&&e.target===$('#sequence')&&e.code==='Space'))return;
  if(e.ctrlKey||e.metaKey)return;
+ const previousKonamiIndex=konamiIndex,secretMove=trackKonami(e.key.length===1?e.key.toUpperCase():e.key);
  if(e.code==='Space'&&e.shiftKey&&playback){e.preventDefault();if(!e.repeat)previous();return;}
  if(e.code==='Space'&&(playback||$('#sequence').value.trim())){e.preventDefault();if(!e.repeat)advance();return;}
  const arrows={ArrowLeft:[-.12,0],ArrowRight:[.12,0],ArrowUp:[0,-.1],ArrowDown:[0,.1]};
  if(arrows[e.key]){e.preventDefault();orbit.turn(...arrows[e.key]);return;}
- if(e.repeat)return;const f=FACES.find((f,index)=>keys[f]===e.key.toLowerCase()||String(index+1)===e.key);if(f){e.preventDefault();enqueue(f+(e.shiftKey?"'":mode));}
+ if(e.repeat)return;const secretFace=previousKonamiIndex===8&&e.key.toUpperCase()==='B'?'B':secretMove?'F':null,f=secretFace||FACES.find((f,index)=>keys[f]===e.key.toLowerCase()||String(index+1)===e.key);if(f){e.preventDefault();enqueue(f+(e.shiftKey?"'":mode),'move',!!secretFace);}
 },true);
 let drag=null;canvas.onpointerdown=e=>{drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);canvas.focus({preventScroll:true});};canvas.onpointermove=e=>{if(!drag)return;orbit.turn((e.clientX-drag.x)*.008,(e.clientY-drag.y)*.008);drag={x:e.clientX,y:e.clientY};};canvas.onpointerup=canvas.onpointercancel=canvas.onlostpointercapture=()=>drag=null;canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.6,Math.min(1.45,zoom-e.deltaY*.001));},{passive:false});
 const view=v=>orbit.view(v);
