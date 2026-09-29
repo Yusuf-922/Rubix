@@ -90,7 +90,7 @@ function updatePlaybackControls(){
  $('#advance').textContent=!playback?'Adım adım başlat · Boşluk':playback.phase==='break'?'Sonraki satır · Boşluk':'Sonraki adım · Boşluk';
  $('.workspace').classList.toggle('playback-active',!!playback);
  const statuses={running:'Oynatılıyor.',step:'Adım adım · Bir sonraki hamle için Boşluk tuşuna bas.',break:'Satır tamamlandı · Sonraki satır için Boşluk tuşuna bas.',done:'Akış tamamlandı · Yeniden oynatabilir veya yeni bir hamle yapabilirsin.'};
- $('#playback-status').textContent=playback?statuses[playback.phase]:solutionBase?'Çözüm akışı · Oynatma, çözümün hesaplandığı küpten başlar.':held?'Tutulan konum · Küpü çözebilirsin.':'Canlı kayıt · Küpü tutarak bu konumu çözüm başlangıcı yapabilirsin.';
+ const recorded=history.length?history.join(' '):'Henüz hamle yok.';$('#move-history').textContent=playback?`${statuses[playback.phase]} Tam geçmiş: ${recorded}`:`Tam hamle geçmişi: ${recorded}`;
 }
 function startPlayback(playMode){
  if(!playback&&(animation||queue.length)){toast('Sıradaki hamleler tamamlandığında oynatabilirsin.');return;}
