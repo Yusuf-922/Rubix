@@ -16,7 +16,7 @@ const photoDataByUrl=new Map();
 let playback=null,liveSnapshot=null,draftDirty=false,keys={...DEFAULT_KEYS};
 let solutionBase=null,solverJob=null;
 let heldCube=null,heldSource='';
-let konamiIndex=0,konamiArmed=false,easterMessage='';
+let easterMessage='';
 const KONAMI=['U','U','D','D','L','R','L','R','B','F'];
 let explanationMode='text';
 function clearSolution(){if(solutionBase){solutionBase=null;draftDirty=false;}if(!solverJob)$('#solver-status').textContent='Mevcut küp için çözüm bul; tamamını veya adım adım izle.';}
@@ -35,7 +35,7 @@ references();
 function addFaceButtons(container,stage=false){for(const [index,f] of FACES.entries()){const b=document.createElement('button');let pressTimer=null,tapTimer=null,held=false,pointerType='mouse';b.className=stage?'stage-face-button':'';b.innerHTML=stage?`<strong>${f}</strong><small>${LABELS[f]}</small>`:`<strong>${f}</strong><small>${LABELS[f]}</small><span class="shortcut-key"></span>`;b.dataset.face=f;b.dataset.index=index;b.setAttribute('aria-label',`${LABELS[f]} yüzünü döndür`);b.onpointerdown=e=>{pointerType=e.pointerType;if(e.pointerType==='mouse'&&e.button===2){e.preventDefault();clearTimeout(tapTimer);enqueue(f+"'");return;}if(e.button!==0)return;held=false;clearTimeout(tapTimer);pressTimer=setTimeout(()=>{held=true;enqueue(f+'2');},520);};b.onpointerup=b.onpointercancel=b.onpointerleave=()=>clearTimeout(pressTimer);b.oncontextmenu=e=>e.preventDefault();b.onclick=e=>{if(held){e.preventDefault();return;}if(pointerType==='touch'||pointerType==='pen'){clearTimeout(tapTimer);tapTimer=setTimeout(()=>enqueue(f+mode),260);}else enqueue(f+mode);};b.ondblclick=e=>{if(held)return;if(pointerType==='touch'||pointerType==='pen'){e.preventDefault();clearTimeout(tapTimer);enqueue(f+"'");}};container.append(b);}}
 addFaceButtons($('#move-buttons'));addFaceButtons($('#stage-move-buttons'),true);
 $$('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;$$('[data-mode]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b);});});
-function enqueue(move,kind='move'){if(kind==='move')trackKonamiMove(move);else{konamiArmed=false;konamiIndex=0;}easterMessage='';if(playback)stopPlayback();if(queue.length>40){toast('Önce sıradaki hamlelerin tamamlanmasını bekle.');return;}clearSolution();queue.push({move,kind});updateHistory();startNext();}
+function enqueue(move,kind='move'){easterMessage='';if(playback)stopPlayback();if(queue.length>40){toast('Önce sıradaki hamlelerin tamamlanmasını bekle.');return;}clearSolution();queue.push({move,kind});updateHistory();startNext();}
 function startNext(){
  if(animation)return;
  const entry=playback?.take();
@@ -66,10 +66,10 @@ function undo(){
 function redo(){if(playback)stopPlayback();const job=historyRequest('redo',history,cursor,[animation,...queue]);if(job)enqueue(job.move,job.kind);}
 $('#undo').onclick=undo;
 $('#redo').onclick=redo;
-function resetState(s){if(playback)stopPlayback();clearSolution();solverJob?.cancel();konamiIndex=0;konamiArmed=false;easterMessage='';state=clone(s);liveBase=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();$('#move-description').textContent='Yüz harfine basarak veya aşağıdaki düğmelerle döndür.';}
+function resetState(s){if(playback)stopPlayback();clearSolution();solverJob?.cancel();easterMessage='';state=clone(s);liveBase=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();$('#move-description').textContent='Yüz harfine basarak veya aşağıdaki düğmelerle döndür.';}
 function heldStateMatches(){return !!heldCube&&solverInput(state)===solverInput(heldCube);}
 function isKonamiSequence(){return solverInput(liveBase)===solverInput(solved())&&history.length===KONAMI.length&&history.every((move,index)=>move===KONAMI[index]);}
-function holdCube(source='Tutulan konum'){if(animation||queue.length){toast('Önce süren hamlelerin tamamlanmasını bekle.');return;}const keepsKonami=konamiArmed||isKonamiSequence();konamiIndex=0;konamiArmed=keepsKonami;easterMessage='';heldCube=clone(state);heldSource=source;initial=clone(state);initialSource=source;liveBase=clone(state);history=[];cursor=0;draftDirty=false;clearSolution();$('#source-label').textContent=source;$('#move-description').textContent='Küp tutuldu. Hamleleri buradan itibaren kaydediyorum.';updateHistory();toast('Küp konumu tutuldu. Çözüm hazır.');}
+function holdCube(source='Tutulan konum'){if(animation||queue.length){toast('Önce süren hamlelerin tamamlanmasını bekle.');return;}if(isKonamiSequence()){revealEasterEgg();return;}easterMessage='';heldCube=clone(state);heldSource=source;initial=clone(state);initialSource=source;liveBase=clone(state);history=[];cursor=0;draftDirty=false;clearSolution();$('#source-label').textContent=source;$('#move-description').textContent='Küp tutuldu. Hamleleri buradan itibaren kaydediyorum.';updateHistory();toast('Küp konumu tutuldu. Çözüm hazır.');}
 $('#hold-cube').onclick=()=>holdCube();
 $('#reset-cube').onclick=()=>{resetState(heldCube||initial);$('#source-label').textContent=heldCube?heldSource:initialSource;toast('Küp tutulan konuma döndü.');};
 $('#solve-reset').onclick=()=>{resetState(solved());$('#source-label').textContent='Çözülmüş küp';toast('Küp çözülmüş hale sıfırlandı.');};
@@ -117,10 +117,8 @@ $('#use-history').onclick=()=>{clearSolution();draftDirty=false;$('#sequence-err
 $('#explanation-mode').value=explanationMode;
 $('#move-description').hidden=explanationMode==='off';
 $('#explanation-mode').onchange=e=>{explanationMode=e.target.value;try{localStorage.setItem('rubix-explanations',explanationMode);}catch{}if(explanationMode==='off'&&'speechSynthesis'in window)speechSynthesis.cancel();if(animation)explainMove(animation.move);else $('#move-description').hidden=explanationMode==='off';};
-function trackKonamiMove(move){if(!konamiIndex){const heldSolved=heldCube&&solverInput(heldCube)===solverInput(solved()),liveSolved=solverInput(state)===solverInput(solved());if(!heldSolved&&!liveSolved)return;}konamiArmed=false;konamiIndex=move===KONAMI[konamiIndex]?konamiIndex+1:move===KONAMI[0]?1:0;if(konamiIndex!==KONAMI.length)return;konamiIndex=0;konamiArmed=true;}
-function revealEasterEgg(){const note='Uygulamamı kullanıp bunu denemiş olman beni çok sevindirdi.\nUygulama Geliştiricisi Yusuf Birdal’dan sevgilerle';konamiArmed=false;easterMessage='';solutionBase=null;history=[];cursor=0;queue=[];draftDirty=true;$('#sequence').value=note;$('#solver-status').textContent='Bu küpün çözümü bugünlük gizli kaldı.';$('#move-description').textContent='Bir sürpriz buldun.';updateHistory();}
+function revealEasterEgg(){const note='Uygulamamı kullanıp bunu denemiş olman beni çok sevindirdi.\nUygulama Geliştiricisi Yusuf Birdal’dan sevgilerle';easterMessage='';solutionBase=null;history=[];cursor=0;queue=[];draftDirty=true;$('#sequence').value=note;$('#solver-status').textContent='Bu küpün çözümü bugünlük gizli kaldı.';$('#move-description').textContent='Bir sürpriz buldun.';updateHistory();}
 $('#solve-cube').onclick=async()=>{
- if(konamiArmed&&heldStateMatches()){revealEasterEgg();return;}
  if(!heldStateMatches()||solverJob||playback||animation||queue.length)return;
  const snapshot=clone(state);
  try{
