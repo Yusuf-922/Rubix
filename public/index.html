@@ -8,7 +8,8 @@
  <div class="section-eyebrow">01 / KENDİ KÜPÜN</div><h1>Fotoğraftan küpe.</h1><p class="muted">Altı yüzü ekle. Renkleri kontrol et.<br>Küpünü üç boyutta keşfet.</p>
  <div class="load-actions"><button id="refresh" class="primary">↻ Klasörü yenile</button><button id="camera-open">▣ Kamerayla çek</button><label class="file-button">Fotoğraf seç<input id="files" type="file" accept="image/png,image/jpeg,image/webp" multiple></label></div>
  <div class="photo-status"><p id="folder-info" class="micro" role="status">Fotoğraf klasörü kontrol ediliyor…</p><button id="clear-photos" class="quiet" hidden>Tümünü sil</button></div>
- <button id="analyze-all" class="primary full">✦ Fotoğrafları otomatik tanı</button><p id="analysis-status" class="micro" role="status">Altı fotoğrafı birlikte seç; yüzler merkez renklerine göre yerleşir.</p>
+ <button id="analyze-all" class="primary full">✦ Fotoğrafları otomatik tanı</button>
+ <details class="calibration-settings"><summary>Renk kalibrasyonu <span id="calibration-badge">İsteğe bağlı</span></summary><p class="micro">Kendi küpünün altı merkez rengini sırayla referans alır. Kırmızı ve turuncuyu daha güvenilir ayırmak için kullan.</p><div class="calibration-actions"><button id="start-calibration">Kalibrasyonu başlat</button><button id="reset-calibration" hidden>Referansları sil</button></div><p id="calibration-status" class="micro" role="status">İstersen kalibrasyonu başlatıp her merkez rengini bir kez seçebilirsin.</p></details>
  <div class="rule"></div><div class="row"><h2>Yüzler</h2><span id="face-count" class="micro">0 / 6 hazır</span></div><div id="face-tabs" class="face-tabs"></div>
  <div class="row face-heading"><strong id="face-title">U · Üst yüz</strong><span id="face-state" class="micro">Fotoğraf bekleniyor</span></div>
  <span class="field-label">Bu yüz için çekilen fotoğraflar</span><div id="photo-picker" class="photo-picker" role="listbox" aria-label="Çekilen fotoğraflar"></div>

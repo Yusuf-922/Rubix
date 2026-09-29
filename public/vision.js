@@ -21,6 +21,14 @@ export function classifyColor(rgb) {
  if(h<175)return 'F';
  return 'B';
 }
+export function classifyWithReferences(rgb,references) {
+ const available=FACES.filter(face=>references?.[face]);
+ if(available.length!==FACES.length)return classifyColor(rgb);
+ const [h,s,v]=hsv(rgb);
+ let best=available[0],bestDistance=Infinity;
+ for(const face of available){const [rh,rs,rv]=hsv(references[face]);const chroma=Math.max(s,rs),hue=chroma<.16?0:Math.min(Math.abs(h-rh),360-Math.abs(h-rh))/180;const distance=hue*1.8+Math.abs(s-rs)*.75+Math.abs(v-rv)*.35;if(distance<bestDistance){best=face;bestDistance=distance;}}
+ return best;
+}
 function maskColor(rgb) {
  const [h,s,v]=hsv(rgb);
  if(v<.28)return 0;

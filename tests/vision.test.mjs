@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync,existsSync} from 'node:fs';
-import {detectFace,alignFaces,rotateGrid,classifyColor,assessPhotoFaces} from '../public/vision.js';
+import {detectFace,alignFaces,rotateGrid,classifyColor,classifyWithReferences,assessPhotoFaces} from '../public/vision.js';
 import {validate,FACES,fromFaces,apply,facelets} from '../public/cube.js';
 const root=new URL('./fixtures/real/',import.meta.url),available=existsSync(new URL('manifest.json',root));
 const expected=['LFDLLLDDU','LFFBRDBDU','RBBFBUFBU','BUDRDUFLU','BRRDFBDLL','LRRFURRUF'];
@@ -23,6 +23,12 @@ test('dört fotoğraf dönüşü hücre sırasını korur; sabit beyaz/kırmız�
  let grid=Array.from({length:9},(_,i)=>i);for(let i=0;i<4;i++)grid=rotateGrid(grid);assert.deepEqual(grid,Array.from({length:9},(_,i)=>i));
  assert.equal(classifyColor([216,202,193]),'U');assert.equal(classifyColor([178,42,20]),'R');assert.equal(classifyColor([218,82,32]),'L');
  assert.equal(classifyColor([220,50,18]),'L');assert.equal(classifyColor([190,25,17]),'R');
+});
+test('kalibre edilmiş merkez referansları yakın renkleri doğru sınıflandırır',()=>{
+ const references={U:[223,216,208],R:[185,30,20],F:[63,184,38],D:[238,205,33],L:[235,88,25],B:[38,90,185]};
+ assert.equal(classifyWithReferences([226,105,30],references),'L');
+ assert.equal(classifyWithReferences([170,35,24],references),'R');
+ assert.equal(classifyWithReferences([220,214,206],references),'U');
 });
 test('yüz içermeyen düz bir görsel güvenli şekilde reddedilir',()=>{
  const width=120,height=160,data=new Uint8ClampedArray(width*height*4).fill(255);assert.throws(()=>detectFace({width,height,data}),/bulunamadı/);
