@@ -18,18 +18,14 @@ let solutionBase=null,solverJob=null;
 let heldCube=null,heldSource='';
 let easterMessage='';
 const KONAMI=['U','U','D','D','L','R','L','R','B','F'];
-let explanationMode='text';
 function clearSolution(){if(solutionBase){solutionBase=null;draftDirty=false;}if(!solverJob)$('#solver-status').textContent='Mevcut küp için çözüm bul; tamamını veya adım adım izle.';}
 try{const stored=JSON.parse(localStorage.getItem('rubix-shortcuts'));if(stored&&validateKeys(stored))keys=Object.fromEntries(FACES.map(f=>[f,stored[f].toLowerCase()]));}catch{}
-try{const stored=localStorage.getItem('rubix-explanations');if(['off','text','voice'].includes(stored))explanationMode=stored;}catch{}
 const swatch=f=>COLORS[f];
 let analyzing=false,analysisMessage='';
 let photoDiagnostics=[];
 const oriented={U:'B · Arka',R:'U · Üst',F:'U · Üst',D:'F · Ön',L:'U · Üst',B:'U · Üst'};
 const canvas=$('#cube-canvas'),ctx=canvas.getContext('2d');
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
-function moveExplanation(move){const face={U:'Beyaz merkezli üst yüzü',R:'Kırmızı merkezli sağ yüzü',F:'Yeşil merkezli ön yüzü',D:'Sarı merkezli alt yüzü',L:'Turuncu merkezli sol yüzü',B:'Mavi merkezli arka yüzü'}[move[0]];return move.endsWith('2')?`${face} 180 derece çevir.`:move.endsWith("'")?`${face} saat yönünün tersine 90 derece döndür.`:`${face} saat yönünde 90 derece döndür.`;}
-function explainMove(move,speak=false){const description=moveExplanation(move),el=$('#move-description');el.hidden=explanationMode==='off';if(explanationMode==='off')return;el.textContent=description;if(speak&&explanationMode==='voice'&&'speechSynthesis'in window){speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(description);utterance.lang='tr-TR';utterance.rate=.95;speechSynthesis.speak(utterance);}}
 function references(){for(const [id,f] of [['#ref-up','U'],['#ref-front','F']])$(id).innerHTML=`<i style="background:${displayColors[f]}"></i>${LABELS[f]} · ${f}`;}
 references();
 function addFaceButtons(container,stage=false){for(const [index,f] of FACES.entries()){const b=document.createElement('button');let pressTimer=null,tapTimer=null,held=false,pointerType='mouse';b.className=stage?'stage-face-button':'';b.innerHTML=stage?`<strong>${f}</strong><small>${LABELS[f]}</small>`:`<strong>${f}</strong><small>${LABELS[f]}</small><span class="shortcut-key"></span>`;b.dataset.face=f;b.dataset.index=index;b.setAttribute('aria-label',`${LABELS[f]} yüzünü döndür`);b.onpointerdown=e=>{pointerType=e.pointerType;if(e.pointerType==='mouse'&&e.button===2){e.preventDefault();clearTimeout(tapTimer);enqueue(f+"'");return;}if(e.button!==0)return;held=false;clearTimeout(tapTimer);pressTimer=setTimeout(()=>{held=true;enqueue(f+'2');},520);};b.onpointerup=b.onpointercancel=b.onpointerleave=()=>clearTimeout(pressTimer);b.oncontextmenu=e=>e.preventDefault();b.onclick=e=>{if(held){e.preventDefault();return;}if(pointerType==='touch'||pointerType==='pen'){clearTimeout(tapTimer);tapTimer=setTimeout(()=>enqueue(f+mode),260);}else enqueue(f+mode);};b.ondblclick=e=>{if(held)return;if(pointerType==='touch'||pointerType==='pen'){e.preventDefault();clearTimeout(tapTimer);enqueue(f+"'");}};container.append(b);}}
@@ -41,7 +37,7 @@ function startNext(){
  const entry=playback?.take();
  const job=playback?(entry?{move:entry.move,kind:'replay'}:null):queue.shift();
  if(!job){updateHistory();return;}
- animation={...job,...parse(job.move),start:performance.now(),duration:1000-Number($('#speed').value)};explainMove(job.move,playback?.mode==='step');updateHistory();
+ animation={...job,...parse(job.move),start:performance.now(),duration:1000-Number($('#speed').value)};updateHistory();
 }
 function updateHistory(){
  const projected=projectedHistory(history,cursor,[animation,...queue]);
@@ -66,10 +62,10 @@ function undo(){
 function redo(){if(playback)stopPlayback();const job=historyRequest('redo',history,cursor,[animation,...queue]);if(job)enqueue(job.move,job.kind);}
 $('#undo').onclick=undo;
 $('#redo').onclick=redo;
-function resetState(s){if(playback)stopPlayback();clearSolution();solverJob?.cancel();easterMessage='';state=clone(s);liveBase=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();$('#move-description').textContent='Yüz harfine basarak veya aşağıdaki düğmelerle döndür.';}
+function resetState(s){if(playback)stopPlayback();clearSolution();solverJob?.cancel();easterMessage='';state=clone(s);liveBase=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();}
 function heldStateMatches(){return !!heldCube&&solverInput(state)===solverInput(heldCube);}
 function isKonamiSequence(){return solverInput(liveBase)===solverInput(solved())&&history.length===KONAMI.length&&history.every((move,index)=>move===KONAMI[index]);}
-function holdCube(source='Tutulan konum'){if(animation||queue.length){toast('Önce süren hamlelerin tamamlanmasını bekle.');return;}const secret=isKonamiSequence();easterMessage='';heldCube=clone(state);heldSource=source;initial=clone(state);initialSource=source;liveBase=clone(state);history=[];cursor=0;draftDirty=false;clearSolution();$('#source-label').textContent=source;$('#move-description').textContent='Küp tutuldu. Hamleleri buradan itibaren kaydediyorum.';updateHistory();if(secret)showEasterEggNote();else toast('Küp konumu tutuldu. Çözüm hazır.');}
+function holdCube(source='Tutulan konum'){if(animation||queue.length){toast('Önce süren hamlelerin tamamlanmasını bekle.');return;}const secret=isKonamiSequence();easterMessage='';heldCube=clone(state);heldSource=source;initial=clone(state);initialSource=source;liveBase=clone(state);history=[];cursor=0;draftDirty=false;clearSolution();$('#source-label').textContent=source;updateHistory();if(secret)showEasterEggNote();else toast('Küp konumu tutuldu. Çözüm hazır.');}
 $('#hold-cube').onclick=()=>holdCube();
 $('#reset-cube').onclick=()=>{resetState(heldCube||initial);$('#source-label').textContent=heldCube?heldSource:initialSource;toast('Küp tutulan konuma döndü.');};
 $('#solve-reset').onclick=()=>{resetState(solved());$('#source-label').textContent='Çözülmüş küp';toast('Küp çözülmüş hale sıfırlandı.');};
@@ -84,24 +80,22 @@ function updatePlaybackControls(){
  $('#replay').textContent=solutionBase?'▶ Çözümü oynat':'▶ Yeniden oynat';
  const busy=!playback&&(!!animation||queue.length>0),empty=!$('#sequence').value.trim();
  $('#replay').disabled=busy||empty;
- $('#sequence').readOnly=!!playback;$('#use-history').disabled=busy||!!playback;
+ $('#sequence').readOnly=!!playback;
  $('#previous').disabled=!playback||!!animation||playback.mode!=='step'||playback.index===0;
  $('#advance').disabled=busy||empty||!!animation||(!!playback&&(playback.phase==='done'||playback.phase==='running'));
  $('#advance').textContent=!playback?'Adım adım başlat · Boşluk':playback.phase==='break'?'Sonraki satır · Boşluk':'Sonraki adım · Boşluk';
  $('.workspace').classList.toggle('playback-active',!!playback);
- const statuses={running:'Oynatılıyor.',step:'Adım adım · Bir sonraki hamle için Boşluk tuşuna bas.',break:'Satır tamamlandı · Sonraki satır için Boşluk tuşuna bas.',done:'Akış tamamlandı · Yeniden oynatabilir veya yeni bir hamle yapabilirsin.'};
- const recorded=history.length?history.join(' '):'Henüz hamle yok.';$('#move-history').textContent=playback?`${statuses[playback.phase]} Tam geçmiş: ${recorded}`:`Tam hamle geçmişi: ${recorded}`;
 }
 function startPlayback(playMode){
  if(!playback&&(animation||queue.length)){toast('Sıradaki hamleler tamamlandığında oynatabilirsin.');return;}
  let entries;try{entries=parseSequence($('#sequence').value);if(!entries.length)throw Error('Önce bir hamle yap veya akışa hamle yaz.');$('#sequence-error').hidden=true;}catch(err){$('#sequence-error').textContent=err.message;$('#sequence-error').hidden=false;return;}
- if(playback)stopPlayback();if(playMode!=='step'&&'speechSynthesis'in window)speechSynthesis.cancel();
+ if(playback)stopPlayback();
  liveSnapshot={state:clone(state),source:$('#source-label').textContent};
  state=clone(solutionBase||liveBase);playback=new Playback(entries,playMode);$('#source-label').textContent=solutionBase?'Çözüm önizlemesi':'Akış önizlemesi';
  // Move keyboard focus out of the editor so Space advances rather than types.
  canvas.focus({preventScroll:true});$('#stage').scrollIntoView({block:'start',behavior:'smooth'});updateHistory();startNext();
 }
-function stopPlayback(){if(!playback)return;if('speechSynthesis'in window)speechSynthesis.cancel();state=clone(liveSnapshot.state);$('#source-label').textContent=liveSnapshot.source;animation=null;playback=null;liveSnapshot=null;updateHistory();}
+function stopPlayback(){if(!playback)return;state=clone(liveSnapshot.state);$('#source-label').textContent=liveSnapshot.source;animation=null;playback=null;liveSnapshot=null;updateHistory();}
 function advance(){if(animation)return;if(!playback){startPlayback('step');if(!playback)return;}if(playback.advance()){startNext();updateHistory();}}
 function previous(){
  if(!playback||animation||playback.mode!=='step'||playback.index===0)return;
@@ -109,15 +103,10 @@ function previous(){
  if(!playback.rewind())return;
  const reverse=inverse(move);
  animation={move:reverse,kind:'rewind',...parse(reverse),start:performance.now(),duration:1000-Number($('#speed').value)};
- if(explanationMode!=='off'){$('#move-description').hidden=false;$('#move-description').textContent=`${moveExplanation(move)} Geri alınıyor.`;}
  updateHistory();
 }
 $('#replay').onclick=()=>startPlayback('auto');$('#previous').onclick=previous;$('#advance').onclick=advance;
-$('#use-history').onclick=()=>{clearSolution();draftDirty=false;$('#sequence-error').hidden=true;updateHistory();};
-$('#explanation-mode').value=explanationMode;
-$('#move-description').hidden=explanationMode==='off';
-$('#explanation-mode').onchange=e=>{explanationMode=e.target.value;try{localStorage.setItem('rubix-explanations',explanationMode);}catch{}if(explanationMode==='off'&&'speechSynthesis'in window)speechSynthesis.cancel();if(animation)explainMove(animation.move);else $('#move-description').hidden=explanationMode==='off';};
-function showEasterEggNote(){const note='Uygulamamı kullanıp bunu denemiş olman beni çok sevindirdi.\nUygulama Geliştiricisi Yusuf Birdal’dan sevgilerle';draftDirty=true;$('#sequence').value=note;$('#move-description').textContent='Bir sürpriz buldun.';toast('Sürpriz not hamle akışına eklendi.');}
+function showEasterEggNote(){const note='Uygulamamı kullanıp bunu denemiş olman beni çok sevindirdi.\nUygulama Geliştiricisi Yusuf Birdal’dan sevgilerle';draftDirty=true;$('#sequence').value=note;toast('Sürpriz not hamle akışına eklendi.');}
 $('#solve-cube').onclick=async()=>{
  if(!heldStateMatches()||solverJob||playback||animation||queue.length)return;
  const snapshot=clone(state);
