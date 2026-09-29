@@ -93,9 +93,13 @@ function startPlayback(playMode){
 function stopPlayback(){if(!playback)return;if('speechSynthesis'in window)speechSynthesis.cancel();state=clone(liveSnapshot.state);$('#source-label').textContent=liveSnapshot.source;animation=null;playback=null;liveSnapshot=null;updateHistory();}
 function advance(){if(!playback||animation)return;if(playback.advance()){startNext();updateHistory();}}
 function previous(){
- if(!playback||animation||playback.mode!=='step'||!playback.rewind())return;
- state=clone(solutionBase||liveBase);for(let i=0;i<playback.index;i++)state=apply(state,playback.entries[i].move);
- const current=playback.entries[playback.index];if(current)explainMove(current.move);updateHistory();
+ if(!playback||animation||playback.mode!=='step'||playback.index===0)return;
+ const move=playback.entries[playback.index-1].move;
+ if(!playback.rewind())return;
+ const reverse=inverse(move);
+ animation={move:reverse,kind:'rewind',...parse(reverse),start:performance.now(),duration:1000-Number($('#speed').value)};
+ if(explanationMode!=='off'){$('#move-description').hidden=false;$('#move-description').textContent=`${moveExplanation(move)} Geri alınıyor.`;}
+ updateHistory();
 }
 $('#replay').onclick=()=>startPlayback('auto');$('#step-mode').onclick=()=>startPlayback('step');$('#previous').onclick=previous;$('#advance').onclick=advance;
 $('#pause-playback').onclick=()=>{playback?.pause();updateHistory();};$('#stop-playback').onclick=stopPlayback;
@@ -158,7 +162,7 @@ function draw(now){
  for(let x=-1;x<=1;x++)for(let y=-1;y<=1;y++)for(let z=-1;z<=1;z++){if(!x&&!y&&!z)continue;const p=[x,y,z],layer=animation&&dot(p,animation.axis)===1;for(const n of Object.values(NORMAL))surface(p,n,.494,.499,'#101721',layer);}
  for(const t of state)surface(t.p,t.n,.438,.505,displayColors[t.color],animation&&dot(t.p,animation.axis)===1);
  polygons.sort((a,b)=>a.depth-b.depth);for(const p of polygons){ctx.beginPath();p.points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=p.color;ctx.fill();ctx.fillStyle=`rgba(0,0,0,${1-p.light})`;ctx.fill();ctx.strokeStyle='#070d1640';ctx.lineWidth=.6;ctx.stroke();}
- if(animation&&progress===1){const job=animation;state=apply(state,job.move);if(job.kind==='replay')playback.complete();else if(job.kind==='undo')cursor--;else if(job.kind==='redo')cursor++;else{history=history.slice(0,cursor);history.push(job.move);cursor++;}animation=null;updateHistory();startNext();}
+ if(animation&&progress===1){const job=animation;state=apply(state,job.move);if(job.kind==='replay')playback.complete();else if(job.kind==='undo')cursor--;else if(job.kind==='redo')cursor++;else if(job.kind!=='rewind'){history=history.slice(0,cursor);history.push(job.move);cursor++;}animation=null;updateHistory();startNext();}
  requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
@@ -234,6 +238,7 @@ function check(){const count=FACES.filter(f=>faceData[f]?.raw).length;$('#face-c
  if(count===6){const faces=getFaces(),key=JSON.stringify(faces);if(key!==photoCheckKey){photoCheckResult=assessPhotoFaces(faces);photoCheckKey=key;}result=photoCheckResult;}
  $('#validation').textContent=result.message;$('#validation').classList.toggle('ok',result.ok);$('#build-cube').disabled=!result.ok;return result;
 }
+function renderColorWarnings(){const entries=FACES.map(f=>{const d=faceData[f],count=d?.uncertain?.length||0;if(!count)return null;const name=photos.find(p=>p.url===d.url)?.name||LABELS[f]+' yüz fotoğrafı';return {name,face:f,count};}).filter(Boolean),el=$('#color-warnings');el.hidden=!entries.length;el.replaceChildren();if(!entries.length)return;const title=document.createElement('strong');title.textContent='Kontrol listesi';const list=document.createElement('ul');for(const item of entries){const line=document.createElement('li');line.textContent=`${item.name} · ${LABELS[item.face]} yüz: ${item.count} kareyi kontrol et.`;list.append(line);}el.append(title,list);}
 function paintSquare(d,index){
  if(index===4&&paint!==selected){
   const occupied=faceData[paint];
@@ -244,9 +249,9 @@ function paintSquare(d,index){
  reclassify();
 }
 function renderFace(){refreshSelect();const d=faceData[selected];$$('.face-tab').forEach(b=>{b.classList.toggle('active',b.dataset.face===selected);b.classList.toggle('ready',!!faceData[b.dataset.face]?.raw);b.setAttribute('aria-pressed',b.dataset.face===selected);});$('#face-title').textContent=selected+' · '+LABELS[selected]+' yüz';$('#face-state').textContent=d?.raw?'Renkler okundu':d?'Köşeleri seç':'Fotoğraf bekleniyor';$('#orientation').textContent='Fotoğrafın üst kenarındaki komşu: '+oriented[selected];
- $('#face-grid').replaceChildren();for(let i=0;i<9;i++){const b=document.createElement('button');const color=d?.colors?.[i];b.style.background=color?swatch(color):'#2b394d';b.className=(i===4?'center ':'')+(d?.uncertain?.includes(i)?'uncertain':'');b.disabled=!d?.raw;b.title=i===4?'Merkez rengi · düzeltmek için tıkla':`${i+1}. kare${d?.uncertain?.includes(i)?' · rengi kontrol et':''}`;b.setAttribute('aria-label',`${i===4?'Merkez kare':i+1+'. kare'}: ${color?COLOR_NAMES[color]:'okunmadı'}`);b.onclick=()=>paintSquare(d,i);$('#face-grid').append(b);}
+ $('#face-grid').replaceChildren();for(let i=0;i<9;i++){const b=document.createElement('button');const color=d?.colors?.[i];b.style.background=color?swatch(color):'#2b394d';b.className=i===4?'center':'';b.disabled=!d?.raw;b.title=i===4?'Merkez rengi · düzeltmek için tıkla':`${i+1}. kare`;b.setAttribute('aria-label',`${i===4?'Merkez kare':i+1+'. kare'}: ${color?COLOR_NAMES[color]:'okunmadı'}`);b.onclick=()=>paintSquare(d,i);$('#face-grid').append(b);}renderColorWarnings();
  $('#palette').replaceChildren();for(const f of FACES){const b=document.createElement('button');b.style.background=COLORS[f];b.className=paint===f?'selected':'';b.title=COLOR_NAMES[f];b.setAttribute('aria-label',COLOR_NAMES[f]);b.setAttribute('aria-pressed',paint===f);b.onclick=()=>{paint=f;renderFace();};$('#palette').append(b);}
- $('#rotate-face').disabled=!d?.raw;$('#recrop').disabled=!d;$('#align-faces').disabled=FACES.some(f=>!faceData[f]?.raw);$('#photo-empty').hidden=!!d;$('#crop-instruction').textContent=d?.corners.length===4?(d.guide?'Kare kadrajın iç kenarlarından okundu. Renkleri önizlemeden kontrol edebilirsin.':d.auto?`Yüz otomatik bulundu${d.turns?' · '+d.turns*90+'° hizalandı':''}. Renkleri önizlemeden kontrol edebilirsin.`:'Renkler okundu. Sarı çerçeveli kareleri kontrol et.'):d?`Köşe ${Math.min((d?.corners.length||0)+1,4)} / 4: ${['sol üst','sağ üst','sağ alt','sol alt'][d?.corners.length||0]} noktasını seç.`:'Fotoğraf seçildiğinde yüz otomatik bulunur.';check();drawPhoto();
+ $('#rotate-face').disabled=!d?.raw;$('#recrop').disabled=!d;$('#align-faces').disabled=FACES.some(f=>!faceData[f]?.raw);$('#photo-empty').hidden=!!d;$('#crop-instruction').textContent=d?.corners.length===4?(d.guide?'Kare kadrajın iç kenarlarından okundu. Renkleri önizlemeden kontrol edebilirsin.':d.auto?`Yüz otomatik bulundu${d.turns?' · '+d.turns*90+'° hizalandı':''}. Renkleri önizlemeden kontrol edebilirsin.`:'Renkler okundu. Gerekirse paletten karelerin rengini düzelt.'):d?`Köşe ${Math.min((d?.corners.length||0)+1,4)} / 4: ${['sol üst','sağ üst','sağ alt','sol alt'][d?.corners.length||0]} noktasını seç.`:'Fotoğraf seçildiğinde yüz otomatik bulunur.';check();drawPhoto();
 }
 const pc=$('#photo-canvas');let photoRect=null;
 function drawPhoto(){const c=pc.getContext('2d'),r=pc.getBoundingClientRect(),d=faceData[selected],dpr=devicePixelRatio||1;pc.width=r.width*dpr;pc.height=r.height*dpr;c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,r.width,r.height);photoRect=null;if(!d)return;
