@@ -69,7 +69,7 @@ $('#redo').onclick=redo;
 function resetState(s){if(playback)stopPlayback();clearSolution();solverJob?.cancel();easterMessage='';state=clone(s);liveBase=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();$('#move-description').textContent='Yüz harfine basarak veya aşağıdaki düğmelerle döndür.';}
 function heldStateMatches(){return !!heldCube&&solverInput(state)===solverInput(heldCube);}
 function isKonamiSequence(){return solverInput(liveBase)===solverInput(solved())&&history.length===KONAMI.length&&history.every((move,index)=>move===KONAMI[index]);}
-function holdCube(source='Tutulan konum'){if(animation||queue.length){toast('Önce süren hamlelerin tamamlanmasını bekle.');return;}if(isKonamiSequence()){revealEasterEgg();return;}easterMessage='';heldCube=clone(state);heldSource=source;initial=clone(state);initialSource=source;liveBase=clone(state);history=[];cursor=0;draftDirty=false;clearSolution();$('#source-label').textContent=source;$('#move-description').textContent='Küp tutuldu. Hamleleri buradan itibaren kaydediyorum.';updateHistory();toast('Küp konumu tutuldu. Çözüm hazır.');}
+function holdCube(source='Tutulan konum'){if(animation||queue.length){toast('Önce süren hamlelerin tamamlanmasını bekle.');return;}const secret=isKonamiSequence();easterMessage='';heldCube=clone(state);heldSource=source;initial=clone(state);initialSource=source;liveBase=clone(state);history=[];cursor=0;draftDirty=false;clearSolution();$('#source-label').textContent=source;$('#move-description').textContent='Küp tutuldu. Hamleleri buradan itibaren kaydediyorum.';updateHistory();if(secret)showEasterEggNote();else toast('Küp konumu tutuldu. Çözüm hazır.');}
 $('#hold-cube').onclick=()=>holdCube();
 $('#reset-cube').onclick=()=>{resetState(heldCube||initial);$('#source-label').textContent=heldCube?heldSource:initialSource;toast('Küp tutulan konuma döndü.');};
 $('#solve-reset').onclick=()=>{resetState(solved());$('#source-label').textContent='Çözülmüş küp';toast('Küp çözülmüş hale sıfırlandı.');};
@@ -117,7 +117,7 @@ $('#use-history').onclick=()=>{clearSolution();draftDirty=false;$('#sequence-err
 $('#explanation-mode').value=explanationMode;
 $('#move-description').hidden=explanationMode==='off';
 $('#explanation-mode').onchange=e=>{explanationMode=e.target.value;try{localStorage.setItem('rubix-explanations',explanationMode);}catch{}if(explanationMode==='off'&&'speechSynthesis'in window)speechSynthesis.cancel();if(animation)explainMove(animation.move);else $('#move-description').hidden=explanationMode==='off';};
-function revealEasterEgg(){const note='Uygulamamı kullanıp bunu denemiş olman beni çok sevindirdi.\nUygulama Geliştiricisi Yusuf Birdal’dan sevgilerle';easterMessage='';solutionBase=null;history=[];cursor=0;queue=[];draftDirty=true;$('#sequence').value=note;$('#solver-status').textContent='Bu küpün çözümü bugünlük gizli kaldı.';$('#move-description').textContent='Bir sürpriz buldun.';updateHistory();}
+function showEasterEggNote(){const note='Uygulamamı kullanıp bunu denemiş olman beni çok sevindirdi.\nUygulama Geliştiricisi Yusuf Birdal’dan sevgilerle';draftDirty=true;$('#sequence').value=note;$('#move-description').textContent='Bir sürpriz buldun.';toast('Sürpriz not hamle akışına eklendi.');}
 $('#solve-cube').onclick=async()=>{
  if(!heldStateMatches()||solverJob||playback||animation||queue.length)return;
  const snapshot=clone(state);
