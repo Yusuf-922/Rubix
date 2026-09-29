@@ -29,7 +29,8 @@ function moveExplanation(move){const face={U:'Beyaz merkezli üst yüzü',R:'Kı
 function explainMove(move,speak=false){const description=moveExplanation(move),el=$('#move-description');el.hidden=explanationMode==='off';if(explanationMode==='off')return;el.textContent=description;if(speak&&explanationMode==='voice'&&'speechSynthesis'in window){speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(description);utterance.lang='tr-TR';utterance.rate=.95;speechSynthesis.speak(utterance);}}
 function references(){for(const [id,f] of [['#ref-up','U'],['#ref-front','F']])$(id).innerHTML=`<i style="background:${displayColors[f]}"></i>${LABELS[f]} · ${f}`;}
 references();
-for(const f of FACES){const b=document.createElement('button');b.innerHTML=`<strong>${f}</strong><small>${LABELS[f]}</small><span class="shortcut-key"></span>`;b.dataset.face=f;b.setAttribute('aria-label',`${LABELS[f]} yüzünü döndür`);b.onclick=()=>enqueue(f+mode);$('#move-buttons').append(b);}
+function addFaceButtons(container,stage=false){for(const [index,f] of FACES.entries()){const b=document.createElement('button');b.className=stage?'stage-face-button':'';b.innerHTML=stage?`<strong>${f}</strong><small>${LABELS[f]}</small>`:`<strong>${f}</strong><small>${LABELS[f]}</small><span class="shortcut-key"></span>`;b.dataset.face=f;b.dataset.index=index;b.setAttribute('aria-label',`${LABELS[f]} yüzünü döndür`);b.onclick=()=>enqueue(f+mode);container.append(b);}}
+addFaceButtons($('#move-buttons'));addFaceButtons($('#stage-move-buttons'),true);
 $$('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;$$('[data-mode]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b);});});
 function enqueue(move,kind='move'){if(playback)stopPlayback();if(queue.length>40){toast('Önce sıradaki hamlelerin tamamlanmasını bekle.');return;}clearSolution();queue.push({move,kind});updateHistory();startNext();}
 function startNext(){
@@ -37,7 +38,7 @@ function startNext(){
  const entry=playback?.take();
  const job=playback?(entry?{move:entry.move,kind:'replay'}:null):queue.shift();
  if(!job){updateHistory();return;}
- animation={...job,...parse(job.move),start:performance.now(),duration:1000-Number($('#speed').value)};explainMove(job.move,!!playback);updateHistory();
+ animation={...job,...parse(job.move),start:performance.now(),duration:1000-Number($('#speed').value)};explainMove(job.move,playback?.mode==='step');updateHistory();
 }
 function updateHistory(){
  const projected=projectedHistory(history,cursor,[animation,...queue]);
@@ -73,27 +74,26 @@ function updatePlaybackControls(){
  $('#cancel-solve').hidden=!solverJob;
  $('#replay').textContent=solutionBase?'▶ Çözümü oynat':'▶ Yeniden oynat';
  const busy=!playback&&(!!animation||queue.length>0),empty=!$('#sequence').value.trim();
- $('#replay').disabled=busy||empty;$('#step-mode').disabled=busy||empty;
+ $('#replay').disabled=busy||empty;
  $('#sequence').readOnly=!!playback;$('#use-history').disabled=busy||!!playback;
  $('#previous').disabled=!playback||!!animation||playback.mode!=='step'||playback.index===0;
- $('#stop-playback').disabled=!playback;$('#advance').disabled=!playback||!!animation||playback.phase==='done'||playback.phase==='running';
- $('#advance').textContent=playback?.phase==='break'?'Sonraki satır · Boşluk':'Sonraki adım · Boşluk';
- $('#pause-playback').disabled=!playback||playback.phase!=='running';
+ $('#advance').disabled=busy||empty||!!animation||(!!playback&&(playback.phase==='done'||playback.phase==='running'));
+ $('#advance').textContent=!playback?'Adım adım başlat · Boşluk':playback.phase==='break'?'Sonraki satır · Boşluk':'Sonraki adım · Boşluk';
  $('.workspace').classList.toggle('playback-active',!!playback);
- const statuses={running:'Oynatılıyor · Duraklat ile bekletebilirsin.',step:'Adım adım · Bir sonraki hamle için Boşluk tuşuna bas.',break:'Satır tamamlandı · Sonraki satır için Boşluk tuşuna bas.',paused:'Duraklatıldı · Devam etmek için Boşluk tuşuna bas.',done:'Akış tamamlandı · Yeniden oynatabilir veya canlı küpe dönebilirsin.'};
+ const statuses={running:'Oynatılıyor.',step:'Adım adım · Bir sonraki hamle için Boşluk tuşuna bas.',break:'Satır tamamlandı · Sonraki satır için Boşluk tuşuna bas.',done:'Akış tamamlandı · Yeniden oynatabilir veya yeni bir hamle yapabilirsin.'};
  $('#playback-status').textContent=playback?statuses[playback.phase]:solutionBase?'Çözüm akışı · Oynatma, çözümün hesaplandığı küpten başlar.':draftDirty?'Düzenlenen akış · Oynatma, oturumun başlangıç küpünden başlar.':'Canlı kayıt · Yaptığın hamleler akışa eklenir.';
 }
 function startPlayback(playMode){
  if(!playback&&(animation||queue.length)){toast('Sıradaki hamleler tamamlandığında oynatabilirsin.');return;}
  let entries;try{entries=parseSequence($('#sequence').value);if(!entries.length)throw Error('Önce bir hamle yap veya akışa hamle yaz.');$('#sequence-error').hidden=true;}catch(err){$('#sequence-error').textContent=err.message;$('#sequence-error').hidden=false;return;}
- if(playback)stopPlayback();
+ if(playback)stopPlayback();if(playMode!=='step'&&'speechSynthesis'in window)speechSynthesis.cancel();
  liveSnapshot={state:clone(state),source:$('#source-label').textContent};
  state=clone(solutionBase||liveBase);playback=new Playback(entries,playMode);$('#source-label').textContent=solutionBase?'Çözüm önizlemesi':'Akış önizlemesi';
  // Move keyboard focus out of the editor so Space advances rather than types.
  canvas.focus({preventScroll:true});$('#stage').scrollIntoView({block:'start',behavior:'smooth'});updateHistory();startNext();
 }
 function stopPlayback(){if(!playback)return;if('speechSynthesis'in window)speechSynthesis.cancel();state=clone(liveSnapshot.state);$('#source-label').textContent=liveSnapshot.source;animation=null;playback=null;liveSnapshot=null;updateHistory();}
-function advance(){if(!playback||animation)return;if(playback.advance()){startNext();updateHistory();}}
+function advance(){if(animation)return;if(!playback){startPlayback('step');if(!playback)return;}if(playback.advance()){startNext();updateHistory();}}
 function previous(){
  if(!playback||animation||playback.mode!=='step'||playback.index===0)return;
  const move=playback.entries[playback.index-1].move;
@@ -103,8 +103,7 @@ function previous(){
  if(explanationMode!=='off'){$('#move-description').hidden=false;$('#move-description').textContent=`${moveExplanation(move)} Geri alınıyor.`;}
  updateHistory();
 }
-$('#replay').onclick=()=>startPlayback('auto');$('#step-mode').onclick=()=>startPlayback('step');$('#previous').onclick=previous;$('#advance').onclick=advance;
-$('#pause-playback').onclick=()=>{playback?.pause();updateHistory();};$('#stop-playback').onclick=stopPlayback;
+$('#replay').onclick=()=>startPlayback('auto');$('#previous').onclick=previous;$('#advance').onclick=advance;
 $('#use-history').onclick=()=>{clearSolution();draftDirty=false;$('#sequence-error').hidden=true;updateHistory();};
 $('#explanation-mode').value=explanationMode;
 $('#move-description').hidden=explanationMode==='off';
@@ -128,8 +127,9 @@ $('#sequence').oninput=()=>{draftDirty=true;$('#sequence-error').hidden=true;upd
 $('#sequence').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey){e.preventDefault();startPlayback('auto');}};
 function renderKeys(){
  $('#shortcut-fields').replaceChildren();for(const f of FACES){const label=document.createElement('label');label.textContent=f+' · '+LABELS[f];const input=document.createElement('input');input.maxLength=1;input.value=keys[f];input.dataset.face=f;input.setAttribute('aria-label',f+' hamlesinin kısayolu');label.append(input);$('#shortcut-fields').append(label);}
- $$('#move-buttons button').forEach(b=>b.querySelector('.shortcut-key').textContent='Tuş: '+keys[b.dataset.face].toUpperCase());
- $('.key-help').textContent='Tuşlar: '+FACES.map(f=>keys[f].toUpperCase()+' → '+f).join(' · ')+' | Shift: ters yön · Ctrl+Z: geri al';
+ $$('#move-buttons button').forEach(b=>b.querySelector('.shortcut-key').textContent='Tuş: '+keys[b.dataset.face].toUpperCase()+' · '+(Number(b.dataset.index)+1));
+ $$('#stage-move-buttons button').forEach(b=>b.title=`${LABELS[b.dataset.face]} yüz · ${keys[b.dataset.face].toUpperCase()} veya ${Number(b.dataset.index)+1}`);
+ $('.key-help').textContent='Tuşlar: '+FACES.map((f,index)=>`${keys[f].toUpperCase()} / ${index+1} → ${f}`).join(' · ')+' | Shift: ters yön · Ctrl+Z: geri al';
  $('.orbit-hint').textContent='Sürükle veya ← ↑ ↓ →: bakış açısı · Tekerlek: yakınlaş';
 }
 function saveKeys(next){if(!validateKeys(next)){$('#shortcut-status').textContent='Her yüze farklı bir harf veya rakam ata.';return;}keys=next;try{localStorage.setItem('rubix-shortcuts',JSON.stringify(keys));$('#shortcut-status').textContent='Kısayollar bu tarayıcıya kaydedildi.';}catch{$('#shortcut-status').textContent='Kısayollar bu oturum için ayarlandı.';}renderKeys();}
@@ -143,10 +143,11 @@ document.addEventListener('keydown',e=>{
  if((e.ctrlKey||e.metaKey)&&(z||y)&&!editing){e.preventDefault();e.stopPropagation();if(!e.repeat){if(y)redo();else if(!e.shiftKey)undo();}return;}
  if((textInput||e.target.tagName==='SELECT')&&!(playback&&e.target===$('#sequence')&&e.code==='Space'))return;
  if(e.ctrlKey||e.metaKey)return;
- if(e.code==='Space'&&playback){e.preventDefault();if(!e.repeat)advance();return;}
+ if(e.code==='Space'&&e.shiftKey&&playback){e.preventDefault();if(!e.repeat)previous();return;}
+ if(e.code==='Space'&&(playback||$('#sequence').value.trim())){e.preventDefault();if(!e.repeat)advance();return;}
  const arrows={ArrowLeft:[-.12,0],ArrowRight:[.12,0],ArrowUp:[0,-.1],ArrowDown:[0,.1]};
  if(arrows[e.key]){e.preventDefault();orbit.turn(...arrows[e.key]);return;}
- if(e.repeat)return;const f=FACES.find(f=>keys[f]===e.key.toLowerCase());if(f){e.preventDefault();enqueue(f+(e.shiftKey?"'":mode));}
+ if(e.repeat)return;const f=FACES.find((f,index)=>keys[f]===e.key.toLowerCase()||String(index+1)===e.key);if(f){e.preventDefault();enqueue(f+(e.shiftKey?"'":mode));}
 },true);
 let drag=null;canvas.onpointerdown=e=>{drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);canvas.focus({preventScroll:true});};canvas.onpointermove=e=>{if(!drag)return;orbit.turn((e.clientX-drag.x)*.008,(e.clientY-drag.y)*.008);drag={x:e.clientX,y:e.clientY};};canvas.onpointerup=canvas.onpointercancel=canvas.onlostpointercapture=()=>drag=null;canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.6,Math.min(1.45,zoom-e.deltaY*.001));},{passive:false});
 const view=v=>orbit.view(v);
