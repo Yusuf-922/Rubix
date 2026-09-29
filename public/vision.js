@@ -10,7 +10,9 @@ export function hsv([r,g,b]) {
 export function classifyColor(rgb) {
  const [h,s,v]=hsv(rgb);
  if(s<.27&&v>.35)return 'U';
- if(h<10||h>=345)return 'R';
+ // Kırmızı ile turuncunun tonları ışığa en hassas ikilidir. Eşik, gerçek
+ // küp fotoğraflarındaki koyu kırmızı ve sıcak turuncu örneklerine göre ayrılır.
+ if(h<14||h>=345)return 'R';
  if(h<38)return 'L';
  if(h<76)return 'D';
  if(h<175)return 'F';
@@ -20,8 +22,8 @@ function maskColor(rgb) {
  const [h,s,v]=hsv(rgb);
  if(v<.28)return 0;
  if(s<.23&&v>.57)return 1;
- if(s<.55)return 0;
- if(h<38||h>345)return s>.66?2:0;
+ if(s<.42)return 0;
+ if(h<54||h>345)return 2;
  if(h<76)return 3;
  if(h<175)return 4;
  if(h>190&&h<250)return 5;
@@ -37,7 +39,7 @@ export function detectFace(image) {
    for(const next of [x>0?p-1:-1,x<width-1?p+1:-1,y>0?p-width:-1,y<height-1?p+width:-1])if(next>=0&&!seen[next]&&mask[next]===mask[start]){seen[next]=1;stack[tail++]=next;}
   }
   const w=maxx-minx+1,h=maxy-miny+1;
-  if(tail>n*.0005&&tail<n*.055&&w/h>.5&&w/h<1.9&&tail/(w*h)>.45){parts.push({x:sx/tail,y:sy/tail,size:Math.sqrt(tail),area:tail,bounds:[minx,miny,maxx,maxy]});}
+  if(tail>n*.00035&&tail<n*.08&&w/h>.42&&w/h<2.35&&tail/(w*h)>.36){parts.push({x:sx/tail,y:sy/tail,size:Math.sqrt(tail),area:tail,bounds:[minx,miny,maxx,maxy]});}
  }
  let best=null;
  for(const center of parts){
@@ -49,7 +51,7 @@ export function detectFace(image) {
    for(let y=-1;y<=1;y++)for(let x=-1;x<=1;x++){
     const px=center.x+x*a[0]+y*b[0],py=center.y+x*a[1]+y*b[1];let nearest=null,distance=Infinity;
     for(const p of parts){const d=Math.hypot(px-p.x,py-p.y);if(d<distance){distance=d;nearest=p;}}
-    if(distance>Math.min(la,lb)*.25||!nearest||nearest.size/center.size<.55||nearest.size/center.size>1.65||grid.includes(nearest)){score=Infinity;break;}
+    if(distance>Math.min(la,lb)*.32||!nearest||nearest.size/center.size<.42||nearest.size/center.size>2.15||grid.includes(nearest)){score=Infinity;break;}
     grid.push(nearest);score+=distance/(la+lb)+Math.abs(Math.log(nearest.size/center.size))*.07;
    }
    if(grid.length!==9||!Number.isFinite(score))continue;
