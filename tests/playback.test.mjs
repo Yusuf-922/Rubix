@@ -13,6 +13,13 @@ test('adım modunda her komut sadece bir hamle oynatır',()=>{
  for(const move of ['R','U','F']){assert.equal(p.advance(),true);assert.equal(p.take().move,move);assert.equal(p.advance(),false);p.complete();assert.equal(p.take(),null);}
  assert.equal(p.phase,'done');assert.equal(p.index,3);
 });
+test('adım modunda önceki hamleye güvenle dönülür',()=>{
+ const p=new Playback(parseSequence('R U F'),'step');
+ for(const move of ['R','U']){assert.equal(p.advance(),true);assert.equal(p.take().move,move);p.complete();}
+ assert.equal(p.index,2);assert.equal(p.rewind(),true);assert.equal(p.index,1);assert.equal(p.phase,'step');
+ assert.equal(p.advance(),true);assert.equal(p.take().move,'U');p.complete();
+ assert.equal(p.rewind(),true);assert.equal(p.index,1);assert.equal(p.rewind(),true);assert.equal(p.index,0);assert.equal(p.rewind(),false);
+});
 test('animasyon sırasında duraklatma sonraki hamleyi engeller',()=>{
  const p=new Playback(parseSequence('R U'));p.take();p.pause();p.complete();assert.equal(p.phase,'paused');assert.equal(p.take(),null);p.advance();assert.equal(p.take().move,'U');
 });

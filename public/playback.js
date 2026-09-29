@@ -25,6 +25,7 @@ export class Playback {
  }
  pause() {if(this.phase==='running')this.phase='paused';}
  advance() {if(this.active||this.phase==='done')return false;this.phase='running';return true;}
+ rewind() {if(this.active||this.index===0)return false;this.index--;this.phase='step';return true;}
 }
 
 export const DEFAULT_KEYS={U:'u',R:'r',F:'f',D:'d',L:'l',B:'b'};

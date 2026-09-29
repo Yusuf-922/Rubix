@@ -14,13 +14,17 @@ let selected='U',paint='U',photos=[],faceData={},toastTimer,photoCounter=0;
 const photoDataByUrl=new Map();
 let playback=null,liveSnapshot=null,draftDirty=false,keys={...DEFAULT_KEYS};
 let solutionBase=null,solverJob=null;
+let explanationMode='text';
 function clearSolution(){if(solutionBase){solutionBase=null;draftDirty=false;}if(!solverJob)$('#solver-status').textContent='Mevcut küp için çözüm bul; tamamını veya adım adım izle.';}
 try{const stored=JSON.parse(localStorage.getItem('rubix-shortcuts'));if(stored&&validateKeys(stored))keys=Object.fromEntries(FACES.map(f=>[f,stored[f].toLowerCase()]));}catch{}
+try{const stored=localStorage.getItem('rubix-explanations');if(['off','text','voice'].includes(stored))explanationMode=stored;}catch{}
 const swatch=f=>COLORS[f];
 let analyzing=false,analysisMessage='';
 const oriented={U:'B · Arka',R:'U · Üst',F:'U · Üst',D:'F · Ön',L:'U · Üst',B:'U · Üst'};
 const canvas=$('#cube-canvas'),ctx=canvas.getContext('2d');
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
+function moveExplanation(move){const face={U:'Beyaz merkezli üst yüzü',R:'Kırmızı merkezli sağ yüzü',F:'Yeşil merkezli ön yüzü',D:'Sarı merkezli alt yüzü',L:'Turuncu merkezli sol yüzü',B:'Mavi merkezli arka yüzü'}[move[0]];return move.endsWith('2')?`${face} 180 derece çevir.`:move.endsWith("'")?`${face} saat yönünün tersine 90 derece döndür.`:`${face} saat yönünde 90 derece döndür.`;}
+function explainMove(move,speak=false){const description=moveExplanation(move),el=$('#move-description');el.hidden=explanationMode==='off';if(explanationMode==='off')return;el.textContent=description;if(speak&&explanationMode==='voice'&&'speechSynthesis'in window){speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(description);utterance.lang='tr-TR';utterance.rate=.95;speechSynthesis.speak(utterance);}}
 function references(){for(const [id,f] of [['#ref-up','U'],['#ref-front','F']])$(id).innerHTML=`<i style="background:${displayColors[f]}"></i>${LABELS[f]} · ${f}`;}
 references();
 for(const f of FACES){const b=document.createElement('button');b.innerHTML=`<strong>${f}</strong><small>${LABELS[f]}</small><span class="shortcut-key"></span>`;b.dataset.face=f;b.setAttribute('aria-label',`${LABELS[f]} yüzünü döndür`);b.onclick=()=>enqueue(f+mode);$('#move-buttons').append(b);}
@@ -31,7 +35,7 @@ function startNext(){
  const entry=playback?.take();
  const job=playback?(entry?{move:entry.move,kind:'replay'}:null):queue.shift();
  if(!job){updateHistory();return;}
- animation={...job,...parse(job.move),start:performance.now(),duration:1000-Number($('#speed').value)};updateHistory();
+ animation={...job,...parse(job.move),start:performance.now(),duration:1000-Number($('#speed').value)};explainMove(job.move,!!playback);updateHistory();
 }
 function updateHistory(){
  const projected=projectedHistory(history,cursor,[animation,...queue]);
@@ -44,7 +48,6 @@ function updateHistory(){
   if(animation){const s=document.createElement('span');s.className='token current';s.textContent=(animation.kind==='undo'?'↶ ':'')+animation.move;el.append(s);}
   queue.forEach(job=>{const s=document.createElement('span');s.className='token future';s.textContent=job.move;el.append(s);});
  }
- if(animation)$('#move-description').textContent=`${LABELS[animation.move[0]]} yüz · ${animation.move.endsWith('2')?'180 derece':animation.move.endsWith("'")?'ters yönde 90 derece':'saat yönünde 90 derece'}`;
  if(!el.children.length)el.innerHTML='<span class="notation-empty">İlk hamleni yap. Hikâye burada başlasın.</span>';
  const active=el.querySelector('.current');if(active)el.scrollTop=Math.max(0,active.offsetTop-el.offsetTop-el.clientHeight+active.offsetHeight+8);
  if(!draftDirty&&!playback)$('#sequence').value=history.slice(0,cursor).join(' ');
@@ -70,6 +73,7 @@ function updatePlaybackControls(){
  const busy=!playback&&(!!animation||queue.length>0),empty=!$('#sequence').value.trim();
  $('#replay').disabled=busy||empty;$('#step-mode').disabled=busy||empty;
  $('#sequence').readOnly=!!playback;$('#use-history').disabled=busy||!!playback;
+ $('#previous').disabled=!playback||!!animation||playback.mode!=='step'||playback.index===0;
  $('#stop-playback').disabled=!playback;$('#advance').disabled=!playback||!!animation||playback.phase==='done'||playback.phase==='running';
  $('#advance').textContent=playback?.phase==='break'?'Sonraki satır · Boşluk':'Sonraki adım · Boşluk';
  $('#pause-playback').disabled=!playback||playback.phase!=='running';
@@ -86,11 +90,19 @@ function startPlayback(playMode){
  // Move keyboard focus out of the editor so Space advances rather than types.
  canvas.focus({preventScroll:true});$('#stage').scrollIntoView({block:'start',behavior:'smooth'});updateHistory();startNext();
 }
-function stopPlayback(){if(!playback)return;state=clone(liveSnapshot.state);$('#source-label').textContent=liveSnapshot.source;animation=null;playback=null;liveSnapshot=null;updateHistory();}
+function stopPlayback(){if(!playback)return;if('speechSynthesis'in window)speechSynthesis.cancel();state=clone(liveSnapshot.state);$('#source-label').textContent=liveSnapshot.source;animation=null;playback=null;liveSnapshot=null;updateHistory();}
 function advance(){if(!playback||animation)return;if(playback.advance()){startNext();updateHistory();}}
-$('#replay').onclick=()=>startPlayback('auto');$('#step-mode').onclick=()=>startPlayback('step');$('#advance').onclick=advance;
+function previous(){
+ if(!playback||animation||playback.mode!=='step'||!playback.rewind())return;
+ state=clone(solutionBase||liveBase);for(let i=0;i<playback.index;i++)state=apply(state,playback.entries[i].move);
+ const current=playback.entries[playback.index];if(current)explainMove(current.move);updateHistory();
+}
+$('#replay').onclick=()=>startPlayback('auto');$('#step-mode').onclick=()=>startPlayback('step');$('#previous').onclick=previous;$('#advance').onclick=advance;
 $('#pause-playback').onclick=()=>{playback?.pause();updateHistory();};$('#stop-playback').onclick=stopPlayback;
 $('#use-history').onclick=()=>{clearSolution();draftDirty=false;$('#sequence-error').hidden=true;updateHistory();};
+$('#explanation-mode').value=explanationMode;
+$('#move-description').hidden=explanationMode==='off';
+$('#explanation-mode').onchange=e=>{explanationMode=e.target.value;try{localStorage.setItem('rubix-explanations',explanationMode);}catch{}if(explanationMode==='off'&&'speechSynthesis'in window)speechSynthesis.cancel();if(animation)explainMove(animation.move);else $('#move-description').hidden=explanationMode==='off';};
 $('#solve-cube').onclick=async()=>{
  if(solverJob||playback||animation||queue.length)return;
  const snapshot=clone(state);
