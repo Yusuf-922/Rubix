@@ -41,9 +41,11 @@ function enqueue(move,kind='move'){easterMessage='';if(playback)stopPlayback();i
 function updateHistory(){
  const projected=projectedHistory(history,cursor,[animation,...queue]);
  $('#undo').disabled=!!playback||projected.index===0;$('#redo').disabled=!!playback||projected.index===projected.moves.length;
- $('#move-count').textContent=playback?`${playback.index} / ${playback.entries.length} · önizleme`:`${cursor} hamle${queue.length?' · '+queue.length+' sırada':''}`;
+ let preparedSolution=[];if(solutionBase&&!playback){try{preparedSolution=parseSequence($('#sequence').value);}catch{preparedSolution=[];}}
+ $('#move-count').textContent=playback?`${playback.index} / ${playback.entries.length} · önizleme`:solutionBase?`${preparedSolution.length} hamle · çözüm`:`${cursor} hamle${queue.length?' · '+queue.length+' sırada':''}`;
  const el=$('#notation');el.replaceChildren();
  if(playback){let line=-1,row;playback.entries.forEach((entry,i)=>{if(line!==entry.line){line=entry.line;row=document.createElement('div');row.className='notation-line';const label=document.createElement('span');label.className='line-number';label.textContent=line+1;row.append(label);el.append(row);}const token=document.createElement('span');token.className='token'+(i<playback.index?' complete':i===playback.index?' current':' future');token.textContent=entry.move;row.append(token);});}
+ else if(solutionBase){preparedSolution.forEach(entry=>{const token=document.createElement('span');token.className='token';token.textContent=entry.move;el.append(token);});}
  else {
   history.forEach((m,i)=>{const s=document.createElement('span');s.className='token'+(i>=cursor?' future':'')+(!animation&&i===cursor-1?' current':'');s.textContent=m;el.append(s);});
   if(animation){const s=document.createElement('span');s.className='token current';s.textContent=(animation.kind==='undo'?'↶ ':'')+animation.move;el.append(s);}
