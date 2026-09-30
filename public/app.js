@@ -61,7 +61,7 @@ function undo(){
 function redo(){if(playback)stopPlayback();const job=historyRequest('redo',history,cursor,[animation,...queue]);if(job)enqueue(job.move,job.kind);}
 $('#undo').onclick=undo;
 $('#redo').onclick=redo;
-function resetState(s){if(playback)stopPlayback();clearSolution();solverJob?.cancel();easterMessage='';state=clone(s);liveBase=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();}
+function resetState(s){if(playback)stopPlayback();clearSolution();solverJob?.cancel();easterMessage='';state=clone(s);liveBase=clone(s);queue=[];animation=null;history=[];cursor=0;draftDirty=false;updateHistory();updateTrainingStatus();}
 function heldStateMatches(){return !!heldCube&&solverInput(state)===solverInput(heldCube);}
 function isKonamiSequence(){return solverInput(liveBase)===solverInput(solved())&&history.length===KONAMI.length&&history.every((move,index)=>move===KONAMI[index]);}
 function holdCube(source='Tutulan konum'){if(animation||queue.length){toast('Önce süren hamlelerin tamamlanmasını bekle.');return;}const secret=isKonamiSequence();easterMessage='';heldCube=clone(state);heldSource=source;initial=clone(state);initialSource=source;liveBase=clone(state);history=[];cursor=0;draftDirty=false;clearSolution();$('#source-label').textContent=source;updateHistory();if(secret)showEasterEggNote();else toast('Küp konumu tutuldu. Çözüm hazır.');}
@@ -170,19 +170,21 @@ function draw(now){
  for(let x=-1;x<=1;x++)for(let y=-1;y<=1;y++)for(let z=-1;z<=1;z++){if(!x&&!y&&!z)continue;const p=[x,y,z],layer=animation&&dot(p,animation.axis)===1;for(const n of Object.values(NORMAL))surface(p,n,.494,.499,'#101721',layer);}
  for(const t of state)surface(t.p,t.n,.438,.505,trainingColor(t),animation&&dot(t.p,animation.axis)===1);
  polygons.sort((a,b)=>a.depth-b.depth);for(const p of polygons){ctx.beginPath();p.points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=p.color;ctx.fill();ctx.fillStyle=`rgba(0,0,0,${1-p.light})`;ctx.fill();ctx.strokeStyle='#070d1640';ctx.lineWidth=.6;ctx.stroke();}
- if(animation&&progress===1){const job=animation;state=apply(state,job.move);if(job.kind==='replay')playback.complete();else if(job.kind==='undo')cursor--;else if(job.kind==='redo')cursor++;else if(job.kind!=='rewind'){history=history.slice(0,cursor);history.push(job.move);cursor++;}animation=null;updateHistory();updateTrainingStatus();if(playback)schedulePlaybackNext();else startNext();}
+ if(animation&&progress===1){const job=animation;state=apply(state,job.move);if(job.kind==='replay')playback.complete();else if(job.kind==='undo')cursor--;else if(job.kind==='redo')cursor++;else if(job.kind!=='rewind'){history=history.slice(0,cursor);history.push(job.move);cursor++;}animation=null;updateHistory();updateTrainingStatus(true);if(playback)schedulePlaybackNext();else startNext();}
  requestAnimationFrame(draw);
 
 }
 requestAnimationFrame(draw);
 // Eğitim seçimi, ana küpte yalnızca o model için gerekli parçaları öne çıkarır.
-let trainingModel='';
+let trainingModel='',whiteCrossWasComplete=false;
 function isCenterSticker(sticker){return sticker.p.filter(value=>value===0).length===2;}
-function whiteCrossRelevant(sticker){return state.some(candidate=>candidate.color==='U'&&candidate.p.every((value,index)=>value===sticker.p[index]));}
+function isEdgeSticker(sticker){return sticker.p.filter(value=>value===0).length===1;}
+function whiteCrossRelevant(sticker){return isEdgeSticker(sticker)&&state.some(candidate=>candidate.color==='U'&&candidate.p.every((value,index)=>value===sticker.p[index]));}
 function trainingColor(sticker){if(trainingModel!=='white-cross'||isCenterSticker(sticker)||whiteCrossRelevant(sticker))return displayColors[sticker.color];return '#4a5665';}
-function updateTrainingStatus(){const status=$('#training-status');if(trainingModel!=='white-cross'){status.textContent='Bir eğitim modeli seçtiğinde küpte yalnızca ilgili parçalar renkli görünür.';return;}const f=faceletsForWhiteCross();status.textContent=f?'✓ Beyaz haç tamamlandı.':'Beyaz haç etkin: dört beyaz kenar ve eş parçaları renkli; merkezler her zaman kendi renginde.';}
+function updateTrainingStatus(announce=false){const status=$('#training-status');if(trainingModel!=='white-cross'){status.hidden=true;whiteCrossWasComplete=false;return;}status.hidden=false;const complete=faceletsForWhiteCross();status.textContent=complete?'✓ Beyaz haç tamamlandı.':'Beyaz haç etkin: köşeler ve ilgisiz parçalar gri, merkezler kendi renginde.';if(announce&&complete&&!whiteCrossWasComplete)toast('Tebrikler! Beyaz haçı tamamladın.');whiteCrossWasComplete=complete;}
 function faceletsForWhiteCross(){const faces=facelets(state);return [1,3,5,7].every(index=>faces.U[index]==='U')&&faces.B[1]==='B'&&faces.L[1]==='L'&&faces.R[1]==='R'&&faces.F[1]==='F';}
-$('#training-model').onchange=()=>{trainingModel=$('#training-model').value;updateTrainingStatus();};
+$$('[data-training-level]').forEach(button=>button.onclick=()=>{if(button.disabled)return;const active=button.dataset.trainingLevel==='beginner';button.classList.toggle('active',active);button.setAttribute('aria-expanded',String(active));$('#training-tree').hidden=!active;});
+$('#select-white-cross').onclick=()=>{trainingModel='white-cross';$('#select-white-cross').classList.add('selected');$('#select-white-cross').setAttribute('aria-pressed','true');updateTrainingStatus();};
 updateTrainingStatus();
 // Photo input remains on this computer. The server only lists the designated folder.
 for(const f of FACES){const b=document.createElement('button');b.className='face-tab';b.textContent=f;b.dataset.face=f;b.style.setProperty('--face-color',COLORS[f]);b.title=COLOR_NAMES[f]+' merkez';b.setAttribute('aria-label',LABELS[f]+' yüz fotoğrafı');b.onclick=()=>{selected=f;renderFace();};$('#face-tabs').append(b);}
