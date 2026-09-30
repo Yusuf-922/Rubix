@@ -5,6 +5,7 @@
 
 /* Compact UI at browser zoom 100%; canvas coordinates remain in screen pixels. */
 body{zoom:.9}.solver-panel{padding:14px 0 0}.solver-panel .row{justify-content:flex-start} [hidden]{display:none!important}
+.pro-solve-toggle{display:inline-flex;align-items:center;gap:7px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:.78rem;cursor:pointer;user-select:none}.pro-solve-toggle:has(input:checked){border-color:var(--mint);background:#183629;color:var(--accent)}.pro-solve-toggle input{accent-color:var(--mint);margin:0}
 @media(max-width:720px){body{zoom:1}}
 
 .history-actions{flex-wrap:wrap}

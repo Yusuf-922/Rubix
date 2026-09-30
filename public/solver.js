@@ -13,13 +13,13 @@ export function verifySolution(state,algorithm) {
  return moves;
 }
 
-export function solveCube(state,onStatus=()=>{}) {
+export function solveCube(state,onStatus=()=>{},mode='normal') {
  const input=solverInput(state);
  const worker=new Worker(new URL('./solver-worker.js',import.meta.url));
  let cancel;
  const promise=new Promise((resolve,reject)=>{
   const finish=(error,result)=>{clearTimeout(timer);worker.terminate();error?reject(error):resolve(result);};
-  const timer=setTimeout(()=>finish(Error('Çözüm süresi aşıldı. Yeniden deneyebilirsin.')),120000);
+  const timer=mode==='pro'?null:setTimeout(()=>finish(Error('Çözüm süresi aşıldı. Yeniden deneyebilirsin.')),120000);
   cancel=()=>finish(Error('Çözüm hesaplaması iptal edildi.'));
   worker.onerror=event=>{event.preventDefault();finish(Error('Çözüm motoru yüklenemedi. Sayfayı yenileyip tekrar dene.'));};
   worker.onmessage=({data})=>{
@@ -27,7 +27,7 @@ export function solveCube(state,onStatus=()=>{}) {
    if(data.error){finish(Error(data.error));return;}
    try{finish(null,verifySolution(state,data.algorithm));}catch(error){finish(error);}
   };
-  worker.postMessage({input});
+  worker.postMessage({input,mode});
  });
  return {promise,cancel};
 }

@@ -76,7 +76,7 @@ $('#speed').oninput=()=>$('#speed-value').textContent=(520/(1000-Number($('#spee
 function updatePlaybackControls(){
  const held=heldStateMatches()&&!playback&&!animation&&!queue.length;
  $('#hold-cube').hidden=held;$('#hold-cube').disabled=!!playback||!!animation||queue.length>0;
- $('#solve-cube').hidden=!held;$('#solve-cube').disabled=!held||!!solverJob;
+ $('#solve-cube').hidden=!held;$('#pro-solve-toggle').hidden=!held;$('#solve-cube').disabled=!held||!!solverJob;$('#pro-solve').disabled=!held||!!solverJob;
  $('#cancel-solve').hidden=!solverJob;$('#scramble-cube').disabled=!!playback||!!animation||queue.length>0||!!solverJob;$('#stop-playback').hidden=!playback;$('#stop-playback').disabled=!playback;$('#playback-delay-value').textContent=(Number($('#playback-delay').value)/1000).toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:1})+' sn';
  $('#replay').textContent=solutionBase?'▶ Çözümü oynat':'▶ Yeniden oynat';
  const busy=!playback&&(!!animation||queue.length>0),empty=!$('#sequence').value.trim();
@@ -108,17 +108,17 @@ function previous(){
 }
 $('#replay').onclick=()=>startPlayback('auto');$('#previous').onclick=previous;$('#advance').onclick=advance;$('#stop-playback').onclick=stopPlayback;$('#playback-delay').oninput=updatePlaybackControls;
 function showEasterEggNote(){const note='Uygulamamı kullanıp bunu denemiş olman beni çok sevindirdi.\nUygulama Geliştiricisi Yusuf Birdal’dan sevgilerle :)';draftDirty=true;$('#sequence').value=note;toast('Sürpriz not hamle akışına eklendi.');}
-$('#solve-cube').onclick=async()=>{
+async function startSolve(mode='normal'){
  if(!heldStateMatches()||solverJob||playback||animation||queue.length)return;
  const snapshot=clone(state);
  try{
   const input=solverInput(snapshot);
-  solverJob=solveCube(snapshot,message=>$('#solver-status').textContent=message);updatePlaybackControls();
+  solverJob=solveCube(snapshot,message=>$('#solver-status').textContent=message,mode);updatePlaybackControls();
   const moves=await solverJob.promise;
   if(playback||animation||queue.length||solverInput(state)!==input){$('#solver-status').textContent='Hesaplama sırasında küp değişti. Yeniden Çöz düğmesine bas.';return;}
   if(!moves.length){$('#solver-status').textContent='Küp zaten çözülmüş durumda.';return;}
   solutionBase=snapshot;draftDirty=true;$('#sequence').value=moves.join(' ');$('#sequence-error').hidden=true;
-  $('#solver-status').textContent=`${moves.length} hamlelik çözüm doğrulandı. Çözümü oynat veya Adım adım seç.`;
+  $('#solver-status').textContent=mode==='pro'?`${moves.length} hamlelik Pro çözüm doğrulandı. Daha kısa hamle sınırları ayrıntılı olarak tarandı.`:`${moves.length} hamlelik çözüm doğrulandı. Çözümü oynat veya Adım adım seç.`;
  }catch(error){$('#solver-status').textContent=error.message;}
  finally{solverJob=null;updateHistory();}
 };
@@ -201,11 +201,12 @@ const TRAINING_META={
  'last-layer-edges':{title:'Üst kat kenarları',next:'last-layer-corners',nextText:'üst kat köşelerine',detail:'ilk iki katman ve üst kat kenarları renkli, ilgisiz köşeler gri'},
  'last-layer-corners':{title:'Üst kat köşeleri',next:'last-layer-corners-oriented',nextText:'köşelerin yöneltilmesine',detail:'tüm parçalar renkli; köşelerin doğru yuvaları kontrol ediliyor'},
  'last-layer-corners-oriented':{title:'Köşeleri yönelt',detail:'tüm parçalar renkli; köşe yönleri kontrol ediliyor'}
-};
+}
+$('#solve-cube').onclick=()=>startSolve($('#pro-solve').checked?'pro':'normal');
 const TRAINING_TOGGLES={daisy:'toggle-daisy','white-cross':'toggle-white-cross','direct-white-cross':'toggle-direct-white-cross','white-corners':'toggle-white-corners','middle-layer':'toggle-middle-layer','yellow-cross':'toggle-yellow-cross','last-layer-edges':'toggle-last-layer-edges','last-layer-corners':'toggle-last-layer-corners','last-layer-corners-oriented':'toggle-last-layer-corners-oriented'};
 function targetComplete(model){return model==='daisy'?daisyComplete():(model==='white-cross'||model==='direct-white-cross')?whiteCrossComplete():model==='white-corners'?whiteLayerComplete():model==='middle-layer'?middleLayerComplete():model==='yellow-cross'?yellowCrossComplete():model==='last-layer-edges'?lastLayerEdgesComplete():model==='last-layer-corners'?lastLayerCornersComplete():model==='last-layer-corners-oriented'?cubeComplete():false;}
 function setTrainingModel(model,fromProgression=false){trainingModel=model;trainingWasComplete=fromProgression?false:targetComplete(model);for(const [name,id] of Object.entries(TRAINING_TOGGLES))$('#'+id).checked=model===name;$$('.training-lesson').forEach(lesson=>lesson.classList.toggle('selected',lesson.dataset.trainingModel===model));updateTrainingStatus();}
-function updateTrainingStatus(){const status=$('#training-status'),indicator=$('#training-target-indicator'),label=$('#training-target-label'),solve=$('#solve-cube');if(!trainingModel){status.hidden=true;indicator.hidden=true;solve.disabled=false;solve.removeAttribute('title');trainingWasComplete=false;return;}solve.disabled=true;solve.title='Eğitim modeli etkin olduğunda küp çözümü kapalıdır.';const complete=targetComplete(trainingModel),meta=TRAINING_META[trainingModel],next=meta.next;if(next&&complete&&!trainingWasComplete){const finished=meta.title;setTrainingModel(next,true);status.hidden=false;status.textContent=`${finished} tamamlandı. Şimdi ${meta.nextText} geç.`;return;}status.hidden=false;status.textContent=complete?`✓ ${meta.title} tamamlandı.`:`${meta.title} etkin: ${meta.detail}; merkezler kendi renginde.`;indicator.hidden=false;indicator.classList.toggle('complete',complete);label.textContent=complete?`${meta.title} hazır`:`${meta.title} hedefi`;trainingWasComplete=complete;}
+function updateTrainingStatus(){const status=$('#training-status'),indicator=$('#training-target-indicator'),label=$('#training-target-label'),solve=$('#solve-cube'),solvePro=$('#pro-solve');if(!trainingModel){status.hidden=true;indicator.hidden=true;solve.disabled=false;solvePro.disabled=false;solve.removeAttribute('title');solvePro.removeAttribute('title');trainingWasComplete=false;return;}solve.disabled=true;solvePro.disabled=true;solve.title='Eğitim modeli etkin olduğunda küp çözümü kapalıdır.';solvePro.title='Eğitim modeli etkin olduğunda küp çözümü kapalıdır.';const complete=targetComplete(trainingModel),meta=TRAINING_META[trainingModel],next=meta.next;if(next&&complete&&!trainingWasComplete){const finished=meta.title;setTrainingModel(next,true);status.hidden=false;status.textContent=`${finished} tamamlandı. Şimdi ${meta.nextText} geç.`;return;}status.hidden=false;status.textContent=complete?`✓ ${meta.title} tamamlandı.`:`${meta.title} etkin: ${meta.detail}; merkezler kendi renginde.`;indicator.hidden=false;indicator.classList.toggle('complete',complete);label.textContent=complete?`${meta.title} hazır`:`${meta.title} hedefi`;trainingWasComplete=complete;}
 $$('[data-training-level]').forEach(button=>button.onclick=()=>{if(button.disabled)return;const active=button.dataset.trainingLevel==='beginner';button.classList.toggle('active',active);button.setAttribute('aria-expanded',String(active));$('#training-tree').hidden=!active;});
 for(const [model,id] of Object.entries(TRAINING_TOGGLES))$('#'+id).onchange=event=>setTrainingModel(event.target.checked?model:'');
 for(const model of Object.keys(TRAINING_TOGGLES))$('#open-'+model+'-target').onclick=()=>openTrainingPreview(model);
