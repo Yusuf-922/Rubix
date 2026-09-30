@@ -5,7 +5,7 @@
 
 /* Compact UI at browser zoom 100%; canvas coordinates remain in screen pixels. */
 body{zoom:.9}.solver-panel{padding:14px 0 0}.solver-panel .row{justify-content:flex-start} [hidden]{display:none!important}
-.pro-solve-toggle{display:inline-flex;align-items:center;gap:5px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:.68rem;cursor:pointer;user-select:none}.pro-solve-toggle:has(input:checked){border-color:var(--mint);background:#183629;color:var(--accent)}.pro-solve-toggle input{width:12px;height:12px;accent-color:var(--mint);margin:0}
+.pro-solve-toggle{display:inline-grid;width:40.5px;height:40.5px;place-items:center;padding:0;border:1px solid var(--line);border-radius:8px;background:#1b2635;color:var(--muted);font-size:1rem;cursor:pointer;user-select:none;transition:background .18s,border .18s,color .18s}.pro-solve-toggle:hover{background:#29394d;border-color:#647991}.pro-solve-toggle:has(input:checked){border-color:var(--mint);background:#183629;color:var(--accent)}.pro-solve-toggle:focus-within{outline:2px solid var(--mint);outline-offset:4px}.pro-solve-toggle input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 @media(max-width:720px){body{zoom:1}}
 
 .history-actions{flex-wrap:wrap}

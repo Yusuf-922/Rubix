@@ -8,6 +8,7 @@ import {alignFaces} from '../public/vision.js';
 
 const context=vm.createContext({});
 for(const name of ['cube','solve'])vm.runInContext(readFileSync(new URL(`../public/vendor/cubejs/${name}.js`,import.meta.url),'utf8'),context);
+vm.runInContext(readFileSync(new URL('../public/short-solver.js',import.meta.url),'utf8'),context);
 const Cube=context.Cube;
 Cube.initSolver();
 test('solver face order and all 18 turns agree with our cube model',()=>{
@@ -25,6 +26,14 @@ test('solves deterministic mixed scrambles and leaves original state intact',()=
   const before=JSON.stringify(state);
   verifySolution(state,Cube.fromString(solverInput(state)).solve());
   assert.equal(JSON.stringify(state),before);
+ }
+});
+test('Pro kısa arama yakın durumlarda gerçek en kısa çözümü bulur',()=>{
+ const cases=[['U',"U'"],['D2','D2'],['R U',"U' R'"],["R U R' U'","U R U' R'"]];
+ for(const [scramble,expected] of cases){
+  const cube=new Cube().move(scramble),solution=context.findShortSolution(Cube,cube,8);
+  assert.equal(solution.split(/\s+/).length,expected.split(/\s+/).length,scramble);
+  assert.equal(new Cube().move(scramble).move(solution).isSolved(),true,scramble);
  }
 });
 test('solves the six supplied photo grids after alignment',()=>{
