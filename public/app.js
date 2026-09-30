@@ -13,7 +13,7 @@ let liveBase=clone(initial),initialSource='Örnek küp';
 let selected='U',paint='U',photos=[],faceData={},toastTimer,photoCounter=0;
 const calibration={references:{},active:false,next:0};
 const photoDataByUrl=new Map();
-let playback=null,liveSnapshot=null,draftDirty=false,keys={...DEFAULT_KEYS};
+let playback=null,liveSnapshot=null,playbackTimer=null,draftDirty=false,keys={...DEFAULT_KEYS};
 let solutionBase=null,solverJob=null;
 let heldCube=null,heldSource='';
 let easterMessage='';
@@ -78,7 +78,7 @@ function updatePlaybackControls(){
  const held=heldStateMatches()&&!playback&&!animation&&!queue.length;
  $('#hold-cube').hidden=held;$('#hold-cube').disabled=!!playback||!!animation||queue.length>0;
  $('#solve-cube').hidden=!held;$('#solve-cube').disabled=!held||!!solverJob;
- $('#cancel-solve').hidden=!solverJob;$('#scramble-cube').disabled=!!playback||!!animation||queue.length>0||!!solverJob;
+ $('#cancel-solve').hidden=!solverJob;$('#scramble-cube').disabled=!!playback||!!animation||queue.length>0||!!solverJob;$('#stop-playback').hidden=!playback;$('#stop-playback').disabled=!playback;$('#playback-delay-value').textContent=(Number($('#playback-delay').value)/1000).toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:1})+' sn';
  $('#replay').textContent=solutionBase?'▶ Çözümü oynat':'▶ Yeniden oynat';
  const busy=!playback&&(!!animation||queue.length>0),empty=!$('#sequence').value.trim();
  $('#replay').disabled=busy||empty;
@@ -95,10 +95,10 @@ function startPlayback(playMode){
  liveSnapshot={state:clone(state),source:$('#source-label').textContent};
  state=clone(solutionBase||liveBase);playback=new Playback(entries,playMode);$('#source-label').textContent=solutionBase?'Çözüm önizlemesi':'Akış önizlemesi';
  // Move keyboard focus out of the editor so Space advances rather than types.
- canvas.focus({preventScroll:true});$('#stage').scrollIntoView({block:'start',behavior:'smooth'});updateHistory();startNext();
+ canvas.focus({preventScroll:true});$('#stage').scrollIntoView({block:'start',behavior:'smooth'});updateHistory();schedulePlaybackNext(solutionBase?Math.max(450,Number($('#playback-delay').value)):0);
 }
-function stopPlayback(){if(!playback)return;state=clone(liveSnapshot.state);$('#source-label').textContent=liveSnapshot.source;animation=null;playback=null;liveSnapshot=null;updateHistory();}
-function advance(){if(animation)return;if(!playback){startPlayback('step');if(!playback)return;}if(playback.advance()){startNext();updateHistory();}}
+function schedulePlaybackNext(delay=Number($('#playback-delay').value)){if(!playback)return;clearTimeout(playbackTimer);if(delay>0){playbackTimer=setTimeout(()=>{playbackTimer=null;startNext();},delay);}else startNext();}
+function stopPlayback(){if(!playback)return;const sequence=$('#sequence').value;clearTimeout(playbackTimer);playbackTimer=null;state=clone(liveSnapshot.state);$('#source-label').textContent=liveSnapshot.source;animation=null;playback=null;liveSnapshot=null;draftDirty=true;$('#solver-status').textContent='Oynatma durduruldu. Hamle akışını düzenleyebilirsin.';updateHistory();$('#sequence').value=sequence;}function advance(){if(animation)return;if(!playback){startPlayback('step');if(!playback)return;}if(playback.advance()){startNext();updateHistory();}}
 function previous(){
  if(!playback||animation||playback.mode!=='step'||playback.index===0)return;
  const move=playback.entries[playback.index-1].move;
@@ -107,7 +107,7 @@ function previous(){
  animation={move:reverse,kind:'rewind',...parse(reverse),start:performance.now(),duration:1000-Number($('#speed').value)};
  updateHistory();
 }
-$('#replay').onclick=()=>startPlayback('auto');$('#previous').onclick=previous;$('#advance').onclick=advance;
+$('#replay').onclick=()=>startPlayback('auto');$('#previous').onclick=previous;$('#advance').onclick=advance;$('#stop-playback').onclick=stopPlayback;$('#playback-delay').oninput=updatePlaybackControls;
 function showEasterEggNote(){const note='Uygulamamı kullanıp bunu denemiş olman beni çok sevindirdi.\nUygulama Geliştiricisi Yusuf Birdal’dan sevgilerle :)';draftDirty=true;$('#sequence').value=note;toast('Sürpriz not hamle akışına eklendi.');}
 $('#solve-cube').onclick=async()=>{
  if(!heldStateMatches()||solverJob||playback||animation||queue.length)return;
@@ -171,7 +171,7 @@ function draw(now){
  for(let x=-1;x<=1;x++)for(let y=-1;y<=1;y++)for(let z=-1;z<=1;z++){if(!x&&!y&&!z)continue;const p=[x,y,z],layer=animation&&dot(p,animation.axis)===1;for(const n of Object.values(NORMAL))surface(p,n,.494,.499,'#101721',layer);}
  for(const t of state)surface(t.p,t.n,.438,.505,displayColors[t.color],animation&&dot(t.p,animation.axis)===1);
  polygons.sort((a,b)=>a.depth-b.depth);for(const p of polygons){ctx.beginPath();p.points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=p.color;ctx.fill();ctx.fillStyle=`rgba(0,0,0,${1-p.light})`;ctx.fill();ctx.strokeStyle='#070d1640';ctx.lineWidth=.6;ctx.stroke();}
- if(animation&&progress===1){const job=animation;state=apply(state,job.move);if(job.kind==='replay')playback.complete();else if(job.kind==='undo')cursor--;else if(job.kind==='redo')cursor++;else if(job.kind!=='rewind'){history=history.slice(0,cursor);history.push(job.move);cursor++;}animation=null;updateHistory();startNext();}
+ if(animation&&progress===1){const job=animation;state=apply(state,job.move);if(job.kind==='replay')playback.complete();else if(job.kind==='undo')cursor--;else if(job.kind==='redo')cursor++;else if(job.kind!=='rewind'){history=history.slice(0,cursor);history.push(job.move);cursor++;}animation=null;updateHistory();if(playback)schedulePlaybackNext();else startNext();}
  requestAnimationFrame(draw);
 
 }
