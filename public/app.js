@@ -180,7 +180,10 @@ requestAnimationFrame(draw);
 let trainingModel='',trainingWasComplete=false;
 function isCenterSticker(sticker){return sticker.p.filter(value=>value===0).length===2;}
 function isEdgeSticker(sticker){return sticker.p.filter(value=>value===0).length===1;}
-function trainingRelevant(sticker){if(trainingModel==='white-corners')return sticker.p[1]===1;if(trainingModel==='middle-layer')return sticker.p[1]===1||(isEdgeSticker(sticker)&&sticker.p[1]===0);if(!isEdgeSticker(sticker))return false;return state.some(candidate=>candidate.color==='U'&&candidate.p.every((value,index)=>value===sticker.p[index]));}
+function cubieStickers(current,sticker){return current.filter(candidate=>candidate.p.every((value,index)=>value===sticker.p[index]));}
+function whiteLayerPiece(current,sticker){return cubieStickers(current,sticker).some(candidate=>candidate.color==='U');}
+function middleLayerPiece(current,sticker){const cubie=cubieStickers(current,sticker);return cubie.length===2&&cubie.every(candidate=>candidate.color!=='U'&&candidate.color!=='D');}
+function trainingRelevant(sticker){if(trainingModel==='white-corners')return whiteLayerPiece(state,sticker);if(trainingModel==='middle-layer')return whiteLayerPiece(state,sticker)||middleLayerPiece(state,sticker);if(!isEdgeSticker(sticker))return false;return whiteLayerPiece(state,sticker);}
 function trainingColor(sticker){if(!trainingModel||isCenterSticker(sticker)||trainingRelevant(sticker))return displayColors[sticker.color];return '#4a5665';}
 function daisyComplete(){const faces=facelets(state);return [1,3,5,7].every(index=>faces.D[index]==='U');}
 function whiteCrossComplete(){const faces=facelets(state);return [1,3,5,7].every(index=>faces.U[index]==='U')&&faces.B[1]==='B'&&faces.L[1]==='L'&&faces.R[1]==='R'&&faces.F[1]==='F';}
@@ -197,7 +200,7 @@ updateTrainingStatus();
 const previewDialog=$('#training-preview-dialog'),previewCanvas=$('#training-preview-canvas'),previewCtx=previewCanvas.getContext('2d');
 let previewModel='white-cross',previewState=solved(),previewQueue=[],previewAnimation=null,previewZoom=1,previewDrag=null;
 const previewOrbit=new Orbit();
-function previewRelevant(sticker){if(isCenterSticker(sticker))return true;if(previewModel==='white-corners')return sticker.p[1]===1;if(previewModel==='middle-layer')return sticker.p[1]===1||(isEdgeSticker(sticker)&&sticker.p[1]===0);if(!isEdgeSticker(sticker))return false;return previewState.some(candidate=>candidate.color==='U'&&candidate.p.every((value,index)=>value===sticker.p[index]));}
+function previewRelevant(sticker){if(isCenterSticker(sticker))return true;if(previewModel==='white-corners')return whiteLayerPiece(previewState,sticker);if(previewModel==='middle-layer')return whiteLayerPiece(previewState,sticker)||middleLayerPiece(previewState,sticker);if(!isEdgeSticker(sticker))return false;return whiteLayerPiece(previewState,sticker);}
 function daisyPreviewState(){return solved().map(sticker=>sticker.n[1]===-1&&isEdgeSticker(sticker)?{...sticker,color:'U'}:sticker.n[1]===1&&isEdgeSticker(sticker)?{...sticker,color:'D'}:sticker);}
 function previewColor(sticker){return previewRelevant(sticker)?COLORS[sticker.color]:'#4a5665';}
 function previewStartNext(){if(previewAnimation)return;const job=previewQueue.shift();if(!job)return;previewAnimation={...job,...parse(job.move),start:performance.now(),duration:520};}
