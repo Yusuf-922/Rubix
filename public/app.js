@@ -134,13 +134,6 @@ function saveKeys(next){if(!validateKeys(next)){$('#shortcut-status').textConten
 $('#save-shortcuts').onclick=()=>saveKeys(Object.fromEntries($$('#shortcut-fields input').map(i=>[i.dataset.face,i.value.toLowerCase()])));
 $('#reset-shortcuts').onclick=()=>saveKeys({...DEFAULT_KEYS});renderKeys();updateHistory();
 document.addEventListener('keydown',e=>{
- if(trainingDialog.open){
-  if(e.altKey)return;
-  const input=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA';if(input)return;
-  const arrows={ArrowLeft:[-.12,0],ArrowRight:[.12,0],ArrowUp:[0,-.1],ArrowDown:[0,.1]};
-  if(arrows[e.key]){e.preventDefault();trainingOrbit.turn(...arrows[e.key]);return;}
-  if(e.repeat)return;const face=FACES.find((item,index)=>keys[item]===e.key.toLowerCase()||String(index+1)===e.key);if(face){e.preventDefault();trainingEnqueue(face+(e.shiftKey?String.fromCharCode(39):''));}return;
- }
  if($('#help').open||$('#shortcuts').open||$('#camera-dialog').open||e.altKey)return;
  if(previewDialog?.open){const input=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA';if(input)return;const arrows={ArrowLeft:[-.12,0],ArrowRight:[.12,0],ArrowUp:[0,-.1],ArrowDown:[0,.1]};if(arrows[e.key]){e.preventDefault();previewOrbit.turn(...arrows[e.key]);return;}if(e.repeat)return;const face=FACES.find((item,index)=>keys[item]===e.key.toLowerCase()||String(index+1)===e.key);if(face){e.preventDefault();previewEnqueue(face+(e.shiftKey?String.fromCharCode(39):''));}return;}
  const textInput=e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'&&!['range','button','checkbox','file'].includes(e.target.type)||e.target.isContentEditable;
