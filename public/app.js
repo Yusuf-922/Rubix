@@ -69,14 +69,16 @@ function holdCube(source='Tutulan konum'){if(animation||queue.length){toast('Ön
 $('#hold-cube').onclick=()=>holdCube();
 $('#reset-cube').onclick=()=>{resetState(heldCube||initial);$('#source-label').textContent=heldCube?heldSource:initialSource;toast('Küp tutulan konuma döndü.');};
 $('#solve-reset').onclick=()=>{resetState(solved());$('#source-label').textContent='Çözülmüş küp';toast('Küp çözülmüş hale sıfırlandı.');};
-$('#reset-view').onclick=()=>{orbit.reset();zoom=1;};
+function scrambleMoves(length=20){const turns=['',String.fromCharCode(39),'2'],moves=[];let previous='';while(moves.length<length){const face=FACES[Math.floor(Math.random()*FACES.length)];if(face===previous)continue;moves.push(face+turns[Math.floor(Math.random()*turns.length)]);previous=face;}return moves;}
+function scrambleCube(){if(playback||animation||queue.length||solverJob){toast('Önce devam eden işlemin tamamlanmasını bekle.');return;}const moves=scrambleMoves();easterMessage='';clearSolution();queue.push(...moves.map(move=>({move,kind:'scramble'})));updateHistory();startNext();toast('Küp 20 hamleyle karıştırılıyor.');}
+$('#scramble-cube').onclick=scrambleCube;$('#reset-view').onclick=()=>{orbit.reset();zoom=1;};
 $('#zoom-in').onclick=()=>zoom=Math.min(1.45,zoom+.1);$('#zoom-out').onclick=()=>zoom=Math.max(.6,zoom-.1);
 $('#speed').oninput=()=>$('#speed-value').textContent=(520/(1000-Number($('#speed').value))).toFixed(1)+'×';
 function updatePlaybackControls(){
  const held=heldStateMatches()&&!playback&&!animation&&!queue.length;
  $('#hold-cube').hidden=held;$('#hold-cube').disabled=!!playback||!!animation||queue.length>0;
  $('#solve-cube').hidden=!held;$('#solve-cube').disabled=!held||!!solverJob;
- $('#cancel-solve').hidden=!solverJob;
+ $('#cancel-solve').hidden=!solverJob;$('#scramble-cube').disabled=!!playback||!!animation||queue.length>0||!!solverJob;
  $('#replay').textContent=solutionBase?'▶ Çözümü oynat':'▶ Yeniden oynat';
  const busy=!playback&&(!!animation||queue.length>0),empty=!$('#sequence').value.trim();
  $('#replay').disabled=busy||empty;

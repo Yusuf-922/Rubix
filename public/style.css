@@ -20,3 +20,6 @@
 
 /* Üst çubuktaki kısayol penceresi. */
 .header-actions{display:flex;align-items:center;gap:6px}.shortcut-dialog{max-width:620px}.shortcut-dialog h2{margin-bottom:8px}.shortcut-dialog .shortcut-fields{grid-template-columns:repeat(6,minmax(0,1fr))}.shortcut-actions{justify-content:flex-start;margin-top:4px}.shortcut-reference{background:#101925;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:16px!important}.shortcut-reference strong{color:var(--accent)}@media(max-width:720px){#shortcuts-toggle{display:none}.header-actions{margin-left:auto}.shortcut-dialog .shortcut-fields{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Rastgele karıştırma denetimi. */
+#scramble-cube{grid-column:span 2}@media(max-width:720px){#scramble-cube{grid-column:span 4}}
