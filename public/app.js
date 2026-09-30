@@ -106,7 +106,7 @@ function previous(){
  updateHistory();
 }
 $('#replay').onclick=()=>startPlayback('auto');$('#previous').onclick=previous;$('#advance').onclick=advance;
-function showEasterEggNote(){const note='Uygulamamı kullanıp bunu denemiş olman beni çok sevindirdi.\nUygulama Geliştiricisi Yusuf Birdal’dan sevgilerle';draftDirty=true;$('#sequence').value=note;toast('Sürpriz not hamle akışına eklendi.');}
+function showEasterEggNote(){const note='Uygulamamı kullanıp bunu denemiş olman beni çok sevindirdi.\nUygulama Geliştiricisi Yusuf Birdal’dan sevgilerle :)';draftDirty=true;$('#sequence').value=note;toast('Sürpriz not hamle akışına eklendi.');}
 $('#solve-cube').onclick=async()=>{
  if(!heldStateMatches()||solverJob||playback||animation||queue.length)return;
  const snapshot=clone(state);
