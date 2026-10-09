@@ -1,4 +1,4 @@
-import {FACES,facelets,validate,apply} from './cube.js';
+import {FACES,facelets,validate,apply} from './cube.js?v=middle-slices-1';
 
 export function solverInput(state) {
  const raw=facelets(state),centerLabels=Object.fromEntries(FACES.map(f=>[raw[f][4],f]));

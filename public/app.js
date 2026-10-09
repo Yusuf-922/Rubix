@@ -1,9 +1,9 @@
-import {FACES,MOVES,COLORS,LABELS,NORMAL,solved,clone,dot,cross,rotate,parse,apply,inverse,facelets,fromFaces,validate} from './cube.js';
+import {FACES,MOVES,COLORS,LABELS,NORMAL,solved,clone,dot,cross,rotate,parse,apply,inverse,facelets,fromFaces,validate} from './cube.js?v=middle-slices-1';
 import {sampleFace,homography} from './photo.js';
-import {parseSequence,Playback,DEFAULT_KEYS,validateKeys} from './playback.js';
+import {parseSequence,Playback,DEFAULT_KEYS,validateKeys} from './playback.js?v=middle-slices-1';
 import {detectFace,classifyColor,classifyWithReferences,COLOR_NAMES,rotateGrid,alignFaces,assessPhotoFaces,hsv} from './vision.js';
 import {projectedHistory,historyRequest} from './history.js';
-import {solveCube,solverInput} from './solver.js';
+import {solveCube,solverInput} from './solver.js?v=middle-slices-1';
 import {Orbit} from './orbit.js';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const hexrgb=h=>h.match(/\w\w/g).map(x=>parseInt(x,16));
