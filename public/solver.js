@@ -1,7 +1,9 @@
 import {FACES,facelets,validate,apply} from './cube.js';
 
 export function solverInput(state) {
- const faces=facelets(state),validation=validate(faces);
+ const raw=facelets(state),centerLabels=Object.fromEntries(FACES.map(f=>[raw[f][4],f]));
+ const faces=Object.fromEntries(FACES.map(f=>[f,raw[f].map(color=>centerLabels[color])]));
+ const validation=validate(faces);
  if(!validation.ok)throw Error(validation.message);
  return FACES.map(f=>faces[f].join('')).join('');
 }
@@ -9,7 +11,7 @@ export function verifySolution(state,algorithm) {
  const moves=algorithm.trim()?algorithm.trim().split(/\s+/):[];
  if(moves.some(m=>! /^[URFDLB](2|')?$/.test(m)))throw Error('Çözüm motoru geçersiz bir hamle döndürdü.');
  const result=facelets(moves.reduce((s,m)=>apply(s,m),state));
- if(!FACES.every(f=>result[f].every(c=>c===f)))throw Error('Üretilen çözüm doğrulanamadı.');
+ if(!FACES.every(f=>result[f].every(c=>c===result[f][4])))throw Error('Üretilen çözüm doğrulanamadı.');
  return moves;
 }
 

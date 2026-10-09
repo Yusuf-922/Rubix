@@ -3,7 +3,7 @@ export function parseSequence(text) {
  text.replace(/[’′]/g,"'").split(/\r?\n/).forEach((line,lineIndex)=>{
   for(const word of line.trim().split(/\s+/).filter(Boolean)) {
    const move=word.toUpperCase();
-   if(!/^[URFDLB](2|')?$/.test(move))throw new Error(`${lineIndex+1}. satır: “${word}” geçerli değil. Örnek: R U R' U2`);
+   if(!/^[URFDLBMES](2|')?$/.test(move))throw new Error(`${lineIndex+1}. satır: “${word}” geçerli değil. Örnek: R U M' E2`);
    entries.push({move,line:lineIndex});
   }
  });
@@ -28,8 +28,8 @@ export class Playback {
  rewind() {if(this.active||this.index===0)return false;this.index--;this.phase='step';return true;}
 }
 
-export const DEFAULT_KEYS={U:'u',R:'r',F:'f',D:'d',L:'l',B:'b'};
+export const DEFAULT_KEYS={U:'u',R:'r',F:'f',D:'d',L:'l',B:'b',M:'m',E:'e',S:'s'};
 export function validateKeys(keys) {
  const values=Object.keys(DEFAULT_KEYS).map(f=>(keys[f]||'').toLowerCase());
- return values.every(k=>/^[a-z0-9]$/.test(k))&&new Set(values).size===6;
+ return values.every(k=>/^[a-z0-9]$/.test(k))&&new Set(values).size===values.length;
 }

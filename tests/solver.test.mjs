@@ -28,6 +28,15 @@ test('solves deterministic mixed scrambles and leaves original state intact',()=
   assert.equal(JSON.stringify(state),before);
  }
 });
+test('orta dilim hamleleri merkezlere göre okunur ve çözüm doğrulanır',()=>{
+ for(const scramble of ['M','E','S',"M U E' F S2",'R M U E2 F S L']){
+  let state=solved();for(const move of scramble.split(' '))state=apply(state,move);
+  const input=solverInput(state);
+  assert.equal(input.length,54,scramble);
+  const solution=Cube.fromString(input).solve();
+  assert.ok(verifySolution(state,solution).length>0,scramble);
+ }
+});
 test('Pro kısa arama yakın durumlarda gerçek en kısa çözümü bulur',()=>{
  const cases=[['U',"U'"],['D2','D2'],['R U',"U' R'"],["R U R' U'","U R U' R'"]];
  for(const [scramble,expected] of cases){

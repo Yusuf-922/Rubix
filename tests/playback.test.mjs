@@ -3,6 +3,7 @@ import {parseSequence,Playback,DEFAULT_KEYS,validateKeys} from '../public/playba
 import {solved,apply,facelets} from '../public/cube.js';
 test('çok satırlı akış, küçük harfler ve farklı kesme işaretleri',()=>{
  assert.deepEqual(parseSequence("r U’\n\nF2 b′"),[{move:'R',line:0},{move:"U'",line:0},{move:'F2',line:2},{move:"B'",line:2}]);
+ assert.deepEqual(parseSequence("m E’ s2"),[{move:'M',line:0},{move:"E'",line:0},{move:'S2',line:0}]);
  assert.deepEqual(parseSequence(' \n '),[]);assert.throws(()=>parseSequence('R\nX'),/2. satır/);assert.throws(()=>parseSequence('R3'),/geçerli değil/);assert.throws(()=>parseSequence('U '.repeat(1001)),/1000/);
 });
 test('akıcı oynatma her satır sonunda bekler; yeni satır komutla başlar',()=>{
