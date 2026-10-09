@@ -3,7 +3,7 @@ import {sampleFace,homography} from './photo.js';
 import {parseSequence,Playback,DEFAULT_KEYS,validateKeys} from './playback.js?v=middle-slices-1';
 import {detectFace,classifyColor,classifyWithReferences,COLOR_NAMES,rotateGrid,alignFaces,assessPhotoFaces,hsv} from './vision.js';
 import {projectedHistory,historyRequest} from './history.js';
-import {solveCube,solverInput} from './solver.js?v=middle-slices-1';
+import {solveCube,solverInput} from './solver.js?v=slice-solver-1';
 import {Orbit} from './orbit.js';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const hexrgb=h=>h.match(/\w\w/g).map(x=>parseInt(x,16));
@@ -17,6 +17,7 @@ let playback=null,liveSnapshot=null,playbackTimer=null,draftDirty=false,keys={..
 let solutionBase=null,solverJob=null;
 let heldCube=null,heldSource='';
 let easterMessage='';
+let trainingModel='',trainingWasComplete=false;
 const KONAMI=['U','U','D','D','L','R','L','R','B','F'];
 function clearSolution(){if(solutionBase){solutionBase=null;draftDirty=false;}if(!solverJob)$('#solver-status').textContent='Mevcut küp için çözüm bul; tamamını veya adım adım izle.';}
 try{const stored=JSON.parse(localStorage.getItem('rubix-shortcuts'));const next={...DEFAULT_KEYS,...stored};if(stored&&validateKeys(next))keys=Object.fromEntries(MOVES.map(f=>[f,next[f].toLowerCase()]));}catch{}
@@ -26,7 +27,7 @@ let photoDiagnostics=[];
 const oriented={U:'B · Arka',R:'U · Üst',F:'U · Üst',D:'F · Ön',L:'U · Üst',B:'U · Üst'};
 const canvas=$('#cube-canvas'),ctx=canvas.getContext('2d');
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
-function references(){const faces=facelets(state);for(const [id,f] of [['#ref-up','U'],['#ref-front','F']])$(id).innerHTML=`<i style="background:${displayColors[faces[f][4]]}"></i>${LABELS[f]} · ${f}`;$$('.stage-face-button').forEach(button=>{const face=button.dataset.face;button.style.setProperty('--face-color',FACES.includes(face)?displayColors[faces[face][4]]:'var(--muted)');});}
+function references(){const faces=facelets(state);for(const [id,f] of [['#ref-up','U'],['#ref-front','F']])$(id).innerHTML=`<i style="background:${displayColors[faces[f][4]]}"></i>${LABELS[f]} · ${f}`;$$('.stage-face-button').forEach(button=>{const face=button.dataset.face;button.style.setProperty('--face-color',FACES.includes(face)?displayColors[face]:'var(--accent)');});}
 references();
 function addFaceButtons(container,stage=false){for(const [index,f] of MOVES.entries()){const b=document.createElement('button');let pressTimer=null,tapTimer=null,held=false,pointerType='mouse';b.className=(stage?'stage-face-button':'')+(index>=FACES.length?' slice-button':'');b.innerHTML=stage?`<strong>${f}</strong><small>${LABELS[f]}</small>`:`<strong>${f}</strong><small>${LABELS[f]}</small><span class="shortcut-key"></span>`;b.dataset.face=f;if(stage)b.style.setProperty('--face-color',displayColors[f]||'var(--muted)');b.dataset.index=index;b.setAttribute('aria-label',`${LABELS[f]} dilimini döndür`);b.onpointerdown=e=>{pointerType=e.pointerType;if(e.pointerType==='mouse'&&e.button===2){e.preventDefault();clearTimeout(tapTimer);enqueue(f+"'");return;}if(e.button!==0)return;held=false;clearTimeout(tapTimer);pressTimer=setTimeout(()=>{held=true;enqueue(f+'2');},400);};b.onpointerup=b.onpointercancel=b.onpointerleave=()=>clearTimeout(pressTimer);b.oncontextmenu=e=>e.preventDefault();b.onclick=e=>{if(held){e.preventDefault();return;}if(pointerType==='touch'||pointerType==='pen'){clearTimeout(tapTimer);tapTimer=setTimeout(()=>enqueue(f+mode),260);}else enqueue(f+mode);};b.ondblclick=e=>{if(held)return;if(pointerType==='touch'||pointerType==='pen'){e.preventDefault();clearTimeout(tapTimer);enqueue(f+"'");}};container.append(b);}}
 addFaceButtons($('#stage-move-buttons'),true);
@@ -74,11 +75,11 @@ function scrambleMoves(length=20){const turns=['',String.fromCharCode(39),'2'],m
 function scrambleCube(){if(playback||animation||queue.length||solverJob){toast('Önce devam eden işlemin tamamlanmasını bekle.');return;}const moves=scrambleMoves();easterMessage='';clearSolution();queue.push(...moves.map(move=>({move,kind:'scramble'})));updateHistory();startNext();toast('Küp 20 hamleyle karıştırılıyor.');}
 $('#scramble-cube').onclick=scrambleCube;$('#reset-view').onclick=()=>{orbit.reset();zoom=1;};
 $('#zoom-in').onclick=()=>zoom=Math.min(1.45,zoom+.1);$('#zoom-out').onclick=()=>zoom=Math.max(.6,zoom-.1);
-$('#speed').oninput=()=>$('#speed-value').textContent=(520/(1000-Number($('#speed').value))).toFixed(1)+'×';
+$('#speed').oninput=()=>{const duration=1000-Number($('#speed').value);$('#speed-value').textContent=(520/duration).toFixed(1)+'×';if(animation){const now=performance.now(),progress=Math.min(1,(now-animation.start)/animation.duration);animation.duration=duration;animation.start=now-progress*duration;}};
 function updatePlaybackControls(){
  const held=heldStateMatches()&&!playback&&!animation&&!queue.length;
  $('#hold-cube').hidden=held;$('#hold-cube').disabled=!!playback||!!animation||queue.length>0;
- $('#solve-cube').hidden=!held;$('#pro-solve-toggle').hidden=!held;$('#solve-cube').disabled=!held||!!solverJob;$('#pro-solve').disabled=!held||!!solverJob;
+ $('#solve-cube').hidden=!held;$('#pro-solve-toggle').hidden=!held;$('#slice-solve-toggle').hidden=!held;const solveDisabled=!held||!!solverJob||!!trainingModel;$('#solve-cube').disabled=solveDisabled;$('#pro-solve').disabled=solveDisabled;$('#slice-solve').disabled=solveDisabled;
  $('#cancel-solve').hidden=!solverJob;$('#scramble-cube').disabled=!!playback||!!animation||queue.length>0||!!solverJob;$('#stop-playback').hidden=!playback;$('#stop-playback').disabled=!playback;$('#playback-delay-value').textContent=(Number($('#playback-delay').value)/1000).toLocaleString('tr-TR',{minimumFractionDigits:1,maximumFractionDigits:1})+' sn';
  $('#replay').textContent=solutionBase?'▶ Çözümü oynat':'▶ Yeniden oynat';
  const busy=!playback&&(!!animation||queue.length>0),empty=!$('#sequence').value.trim();
@@ -115,12 +116,13 @@ async function startSolve(mode='normal'){
  const snapshot=clone(state);
  try{
   const input=solverInput(snapshot);
-  solverJob=solveCube(snapshot,message=>$('#solver-status').textContent=message,mode);updatePlaybackControls();
+  const allowSlices=$('#slice-solve').checked;
+  solverJob=solveCube(snapshot,message=>$('#solver-status').textContent=message,mode,allowSlices);updatePlaybackControls();
   const moves=await solverJob.promise;
   if(playback||animation||queue.length||solverInput(state)!==input){$('#solver-status').textContent='Hesaplama sırasında küp değişti. Yeniden Çöz düğmesine bas.';return;}
   if(!moves.length){$('#solver-status').textContent='Küp zaten çözülmüş durumda.';return;}
   solutionBase=snapshot;draftDirty=true;$('#sequence').value=moves.join(' ');$('#sequence-error').hidden=true;
-  $('#solver-status').textContent=mode==='pro'?`${moves.length} hamlelik Pro çözüm doğrulandı. Daha kısa hamle sınırları ayrıntılı olarak tarandı.`:`${moves.length} hamlelik çözüm doğrulandı. Çözümü oynat veya Adım adım seç.`;
+  $('#solver-status').textContent=`${moves.length} hamlelik ${mode==='pro'?'Pro ':''}çözüm doğrulandı${allowSlices?' · M/E/S araması açık':''}. Çözümü oynat veya Adım adım seç.`;
  }catch(error){$('#solver-status').textContent=error.message;}
  finally{solverJob=null;updateHistory();}
 };
@@ -172,7 +174,6 @@ function draw(now){
 }
 requestAnimationFrame(draw);
 // Eğitim seçimi, ana küpte yalnızca o model için gerekli parçaları öne çıkarır.
-let trainingModel='',trainingWasComplete=false;
 function isCenterSticker(sticker){return sticker.p.filter(value=>value===0).length===2;}
 function isEdgeSticker(sticker){return sticker.p.filter(value=>value===0).length===1;}
 function cubieStickers(current,sticker){return current.filter(candidate=>candidate.p.every((value,index)=>value===sticker.p[index]));}
@@ -208,7 +209,7 @@ $('#solve-cube').onclick=()=>startSolve($('#pro-solve').checked?'pro':'normal');
 const TRAINING_TOGGLES={daisy:'toggle-daisy','white-cross':'toggle-white-cross','direct-white-cross':'toggle-direct-white-cross','white-corners':'toggle-white-corners','middle-layer':'toggle-middle-layer','yellow-cross':'toggle-yellow-cross','last-layer-edges':'toggle-last-layer-edges','last-layer-corners':'toggle-last-layer-corners','last-layer-corners-oriented':'toggle-last-layer-corners-oriented'};
 function targetComplete(model){return model==='daisy'?daisyComplete():(model==='white-cross'||model==='direct-white-cross')?whiteCrossComplete():model==='white-corners'?whiteLayerComplete():model==='middle-layer'?middleLayerComplete():model==='yellow-cross'?yellowCrossComplete():model==='last-layer-edges'?lastLayerEdgesComplete():model==='last-layer-corners'?lastLayerCornersComplete():model==='last-layer-corners-oriented'?cubeComplete():false;}
 function setTrainingModel(model,fromProgression=false){trainingModel=model;trainingWasComplete=fromProgression?false:targetComplete(model);for(const [name,id] of Object.entries(TRAINING_TOGGLES))$('#'+id).checked=model===name;$$('.training-lesson').forEach(lesson=>lesson.classList.toggle('selected',lesson.dataset.trainingModel===model));updateTrainingStatus();}
-function updateTrainingStatus(){const status=$('#training-status'),indicator=$('#training-target-indicator'),label=$('#training-target-label'),solve=$('#solve-cube'),solvePro=$('#pro-solve');if(!trainingModel){status.hidden=true;indicator.hidden=true;solve.disabled=false;solvePro.disabled=false;solve.removeAttribute('title');solvePro.removeAttribute('title');trainingWasComplete=false;return;}solve.disabled=true;solvePro.disabled=true;solve.title='Eğitim modeli etkin olduğunda küp çözümü kapalıdır.';solvePro.title='Eğitim modeli etkin olduğunda küp çözümü kapalıdır.';const complete=targetComplete(trainingModel),meta=TRAINING_META[trainingModel],next=meta.next;if(next&&complete&&!trainingWasComplete){const finished=meta.title;setTrainingModel(next,true);status.hidden=false;status.textContent=`${finished} tamamlandı. Şimdi ${meta.nextText} geç.`;return;}status.hidden=false;status.textContent=complete?`✓ ${meta.title} tamamlandı.`:`${meta.title} etkin: ${meta.detail}; merkezler kendi renginde.`;indicator.hidden=false;indicator.classList.toggle('complete',complete);label.textContent=complete?`${meta.title} hazır`:`${meta.title} hedefi`;trainingWasComplete=complete;}
+function updateTrainingStatus(){const status=$('#training-status'),indicator=$('#training-target-indicator'),label=$('#training-target-label'),solve=$('#solve-cube'),solvePro=$('#pro-solve'),solveSlice=$('#slice-solve');if(!trainingModel){status.hidden=true;indicator.hidden=true;solve.disabled=false;solvePro.disabled=false;solveSlice.disabled=false;solve.removeAttribute('title');solvePro.removeAttribute('title');solveSlice.removeAttribute('title');trainingWasComplete=false;return;}solve.disabled=true;solvePro.disabled=true;solveSlice.disabled=true;solve.title='Eğitim modeli etkin olduğunda küp çözümü kapalıdır.';solvePro.title='Eğitim modeli etkin olduğunda küp çözümü kapalıdır.';solveSlice.title='Eğitim modeli etkin olduğunda küp çözümü kapalıdır.';const complete=targetComplete(trainingModel),meta=TRAINING_META[trainingModel],next=meta.next;if(next&&complete&&!trainingWasComplete){const finished=meta.title;setTrainingModel(next,true);status.hidden=false;status.textContent=`${finished} tamamlandı. Şimdi ${meta.nextText} geç.`;return;}status.hidden=false;status.textContent=complete?`✓ ${meta.title} tamamlandı.`:`${meta.title} etkin: ${meta.detail}; merkezler kendi renginde.`;indicator.hidden=false;indicator.classList.toggle('complete',complete);label.textContent=complete?`${meta.title} hazır`:`${meta.title} hedefi`;trainingWasComplete=complete;}
 $$('[data-training-level]').forEach(button=>button.onclick=()=>{if(button.disabled)return;const active=button.dataset.trainingLevel==='beginner';button.classList.toggle('active',active);button.setAttribute('aria-expanded',String(active));$('#training-tree').hidden=!active;});
 for(const [model,id] of Object.entries(TRAINING_TOGGLES))$('#'+id).onchange=event=>setTrainingModel(event.target.checked?model:'');
 for(const model of Object.keys(TRAINING_TOGGLES))$('#open-'+model+'-target').onclick=()=>openTrainingPreview(model);

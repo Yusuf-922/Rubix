@@ -9,15 +9,16 @@ export function solverInput(state) {
 }
 export function verifySolution(state,algorithm) {
  const moves=algorithm.trim()?algorithm.trim().split(/\s+/):[];
- if(moves.some(m=>! /^[URFDLB](2|')?$/.test(m)))throw Error('Çözüm motoru geçersiz bir hamle döndürdü.');
+ if(moves.some(m=>! /^[URFDLBMES](2|')?$/.test(m)))throw Error('Çözüm motoru geçersiz bir hamle döndürdü.');
  const result=facelets(moves.reduce((s,m)=>apply(s,m),state));
  if(!FACES.every(f=>result[f].every(c=>c===result[f][4])))throw Error('Üretilen çözüm doğrulanamadı.');
  return moves;
 }
 
-export function solveCube(state,onStatus=()=>{},mode='normal') {
+export function solveCube(state,onStatus=()=>{},mode='normal',allowSlices=false) {
  const input=solverInput(state);
- const worker=new Worker(new URL('./solver-worker.js',import.meta.url));
+ const raw=facelets(state),rawInput=FACES.map(f=>raw[f].join('')).join('');
+ const worker=new Worker(new URL('./solver-worker.js?v=slice-solver-1',import.meta.url));
  let cancel;
  const promise=new Promise((resolve,reject)=>{
   const finish=(error,result)=>{clearTimeout(timer);worker.terminate();error?reject(error):resolve(result);};
@@ -29,7 +30,7 @@ export function solveCube(state,onStatus=()=>{},mode='normal') {
    if(data.error){finish(Error(data.error));return;}
    try{finish(null,verifySolution(state,data.algorithm));}catch(error){finish(error);}
   };
-  worker.postMessage({input,mode});
+  worker.postMessage({input,rawInput,mode,allowSlices});
  });
  return {promise,cancel};
 }
