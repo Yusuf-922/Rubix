@@ -1,8 +1,9 @@
 export const FACES=['U','R','F','D','L','B'];
 export const SLICES=['M','E','S'];
-export const MOVES=[...FACES,...SLICES];
+export const ROTATIONS=['x','y','z'];
+export const MOVES=[...FACES,...SLICES,...ROTATIONS];
 export const COLORS={U:'#ffffff',R:'#f52f3f',F:'#48df36',D:'#ffe32f',L:'#ff791d',B:'#2573ff'};
-export const LABELS={U:'Üst',R:'Sağ',F:'Ön',D:'Alt',L:'Sol',B:'Arka',M:'Dikey orta',E:'Yatay orta',S:'Ön orta'};
+export const LABELS={U:'Üst',R:'Sağ',F:'Ön',D:'Alt',L:'Sol',B:'Arka',M:'Dikey orta',E:'Yatay orta',S:'Ön orta',x:'Sağ eksen',y:'Üst eksen',z:'Ön eksen'};
 export const NORMAL={U:[0,1,0],R:[1,0,0],F:[0,0,1],D:[0,-1,0],L:[-1,0,0],B:[0,0,-1]};
 export function position(face,row,col){const a=col-1,b=1-row;return {U:[a,1,row-1],R:[1,b,1-col],F:[a,b,1],D:[a,-1,1-row],L:[-1,b,col-1],B:[1-col,b,-1]}[face];}
 export function solved(){return FACES.flatMap(f=>Array.from({length:9},(_,i)=>({p:position(f,Math.floor(i/3),i%3),n:[...NORMAL[f]],color:f})));}
@@ -10,8 +11,8 @@ export const clone=s=>s.map(t=>({p:[...t.p],n:[...t.n],color:t.color}));
 export const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
 export const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
 export function rotate(v,axis,angle){const c=Math.cos(angle),s=Math.sin(angle),k=dot(axis,v),w=cross(axis,v);return v.map((x,i)=>x*c+w[i]*s+axis[i]*k*(1-c));}
-export function parse(move){if(!/^[URFDLBMES](2|')?$/.test(move))throw Error('Geçersiz hamle');const slice={M:[1,0,0],E:[0,1,0],S:[0,0,1]}[move[0]];return {axis:slice||NORMAL[move[0]],layer:slice?0:1,angle:-Math.PI/2*(move.endsWith('2')?2:move.endsWith("'")?-1:1)};}
-export function apply(state,move){const {axis,layer,angle}=parse(move);return state.map(t=>dot(t.p,axis)===layer?{...t,p:rotate(t.p,axis,angle).map(Math.round),n:rotate(t.n,axis,angle).map(Math.round)}:{...t,p:[...t.p],n:[...t.n]});}
+export function parse(move){if(!/^(?:[URFDLBMES]|[xyz])(2|')?$/.test(move))throw Error('Geçersiz hamle');const symbol=move[0],slice={M:[1,0,0],E:[0,1,0],S:[0,0,1]}[symbol],whole={x:[1,0,0],y:[0,1,0],z:[0,0,1]}[symbol];const direction=symbol==='M'||symbol==='E'?1:-1;return {axis:slice||whole||NORMAL[symbol],layer:slice?0:whole?null:1,all:!!whole,angle:direction*Math.PI/2*(move.endsWith('2')?2:move.endsWith("'")?-1:1)};}
+export function apply(state,move){const {axis,layer,all,angle}=parse(move);return state.map(t=>all||dot(t.p,axis)===layer?{...t,p:rotate(t.p,axis,angle).map(Math.round),n:rotate(t.n,axis,angle).map(Math.round)}:{...t,p:[...t.p],n:[...t.n]});}
 export function inverse(move){return move.endsWith('2')?move:move.endsWith("'")?move[0]:move+"'";}
 export function facelets(state){return Object.fromEntries(FACES.map(f=>[f,Array.from({length:9},(_,i)=>{const p=position(f,Math.floor(i/3),i%3);return state.find(t=>dot(t.n,NORMAL[f])===1&&t.p.every((v,j)=>v===p[j]))?.color;})]));}
 export function fromFaces(faces){return solved().map(t=>{const f=FACES.find(f=>dot(t.n,NORMAL[f])===1);const i=Array.from({length:9},(_,i)=>i).find(i=>position(f,Math.floor(i/3),i%3).every((v,j)=>v===t.p[j]));return {...t,color:faces[f][i]};});}

@@ -11,5 +11,15 @@ test('M E S orta dilimleri, tersleri ve çift dönüşleriyle tutarlı çalış�
  }
  for(const move of ['M','E','S']){const faces=facelets(apply(solved(),move));assert.notEqual(FACES.map(face=>faces[face][4]).join(''),FACES.join(''),move);}
 });
+test('x y z tüm merkezleri döndürür ve tersleriyle başlangıç konumuna döner',()=>{
+ for(const move of ['x','y','z']){
+  const turned=facelets(apply(solved(),move));
+  assert.notEqual(FACES.map(face=>turned[face][4]).join(''),FACES.join(''),move);
+  assert.equal(signature(apply(apply(solved(),move),inverse(move))),signature(solved()),move);
+ }
+ assert.equal(facelets(apply(solved(),'x')).U[4],'F');
+ assert.equal(facelets(apply(solved(),'y')).F[4],'R');
+ assert.equal(facelets(apply(solved(),'z')).U[4],'L');
+});
 test('uzun geçerli diziler ve tersleri, durum doğrulayıcı',()=>{let s=solved();const moves=[];let seed=17;for(let i=0;i<500;i++){seed=(seed*1664525+1013904223)>>>0;const m=FACES[seed%6]+['',"'",'2'][(seed>>>8)%3];moves.push(m);s=apply(s,m);assert.equal(validate(facelets(s)).ok,true);}assert.equal(signature(fromFaces(facelets(s))),signature(s));for(const m of moves.reverse())s=apply(s,inverse(m));assert.equal(signature(s),signature(solved()));});
 test('tek ters kenar, bükük köşe ve tek parça takası reddedilir',()=>{let f=facelets(solved());[f.U[7],f.F[1]]=[f.F[1],f.U[7]];assert.equal(validate(f).ok,false);f=facelets(solved());[f.U[8],f.R[0],f.F[2]]=[f.R[0],f.F[2],f.U[8]];assert.equal(validate(f).ok,false);f=facelets(solved());[f.R[1],f.F[1]]=[f.F[1],f.R[1]];assert.equal(validate(f).ok,false);});

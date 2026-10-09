@@ -1,4 +1,4 @@
-import {FACES,facelets,validate,apply} from './cube.js?v=middle-slices-1';
+import {FACES,facelets,validate,apply} from './cube.js?v=rotations-1';
 
 export function solverInput(state) {
  const raw=facelets(state),centerLabels=Object.fromEntries(FACES.map(f=>[raw[f][4],f]));
@@ -18,7 +18,7 @@ export function verifySolution(state,algorithm) {
 export function solveCube(state,onStatus=()=>{},mode='normal',allowSlices=false) {
  const input=solverInput(state);
  const raw=facelets(state),rawInput=FACES.map(f=>raw[f].join('')).join('');
- const worker=new Worker(new URL('./solver-worker.js?v=slice-solver-1',import.meta.url));
+ const worker=new Worker(new URL('./solver-worker.js?v=rotations-1',import.meta.url));
  let cancel;
  const promise=new Promise((resolve,reject)=>{
   const finish=(error,result)=>{clearTimeout(timer);worker.terminate();error?reject(error):resolve(result);};

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
-import {solved,apply,FACES,facelets,fromFaces} from '../public/cube.js';
+import {solved,apply,FACES,MOVES,facelets,fromFaces} from '../public/cube.js';
 import {solverInput,verifySolution,solveCube} from '../public/solver.js';
 import {alignFaces} from '../public/vision.js';
 
@@ -13,11 +13,17 @@ vm.runInContext(readFileSync(new URL('../public/slice-solver.js',import.meta.url
 const Cube=context.Cube;
 Cube.initSolver();
 test('solver face order and all 18 turns agree with our cube model',()=>{
- for(const f of FACES)for(const suffix of ['',"'",'2']){
+ for(const f of MOVES)for(const suffix of ['',"'",'2']){
   const move=f+suffix,state=apply(solved(),move);
-  assert.equal(solverInput(state),new Cube().move(move).asString());
+  const raw=FACES.map(face=>facelets(state)[face].join('')).join('');
+  assert.equal(raw,new Cube().move(move).asString(),move);
   verifySolution(state,Cube.fromString(solverInput(state)).solve());
  }
+});
+test('küp döndürüldükten sonra da çözüm motoru geçerli konumu çözer',()=>{
+ let state=solved();for(const move of ['R','U','x',"M'",'y','F','z'])state=apply(state,move);
+ const solution=Cube.fromString(solverInput(state)).solve();
+ assert.ok(verifySolution(state,solution).length>0);
 });
 test('solves deterministic mixed scrambles and leaves original state intact',()=>{
  let seed=41;
