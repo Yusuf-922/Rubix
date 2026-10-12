@@ -222,7 +222,7 @@ updateTrainingStatus();
 // Hedef penceresi, ana küpten bağımsız olarak beyaz haçın çözülmüş halini gösterir.
 const previewDialog=$('#training-preview-dialog'),previewCanvas=$('#training-preview-canvas'),previewCtx=previewCanvas.getContext('2d');
 let previewModel='white-cross',previewState=solved(),previewQueue=[],previewAnimation=null,previewZoom=1,previewDrag=null;
-syncDragLock(true);
+syncDragLock(!window.matchMedia('(max-width:720px)').matches);
 const previewOrbit=new Orbit();
 function previewRelevant(sticker){if(isCenterSticker(sticker))return true;if(previewModel==='white-corners')return whiteLayerPiece(previewState,sticker);if(previewModel==='middle-layer')return firstTwoLayersPiece(previewState,sticker);if(previewModel==='yellow-cross'||previewModel==='last-layer-edges')return firstTwoLayersPiece(previewState,sticker)||(isEdgeSticker(sticker)&&yellowLayerPiece(previewState,sticker));if(previewModel==='last-layer-corners'||previewModel==='last-layer-corners-oriented')return true;if(!isEdgeSticker(sticker))return false;return whiteLayerPiece(previewState,sticker);}
 function daisyPreviewState(){return solved().map(sticker=>sticker.n[1]===-1&&isEdgeSticker(sticker)?{...sticker,color:'U'}:sticker.n[1]===1&&isEdgeSticker(sticker)?{...sticker,color:'D'}:sticker);}
